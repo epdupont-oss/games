@@ -60,7 +60,7 @@ body {
 .hearts .lost { opacity: .25; transform: scale(.8); filter: grayscale(1); }
 .stage { flex: 1; min-height: 0; display: grid; place-items: center; }
 canvas { display: block; border-radius: 22px; box-shadow: 0 0 0 6px #5e3a24, 0 10px 0 6px #4b2d1b, 0 18px 30px rgba(60,40,20,.25); touch-action: none; cursor: pointer; }
-.foot { text-align: center; font-weight: 800; font-size: 1rem; color: var(--soil-dark); min-height: 1.4em; }
+.foot { text-align: center; padding-inline: 48px; font-weight: 800; font-size: 1rem; color: var(--soil-dark); min-height: 1.4em; }
 .foot b { font-family: var(--display); font-size: 1.2rem; }
 
 .overlay { position: fixed; inset: 0; background: rgba(59,42,30,.45); display: grid; place-items: center; padding: 16px; z-index: 20; }
@@ -488,4 +488,5 @@ requestAnimationFrame(frame);
 })();
 </script>
 
+<script src="../../home-button.js"></script>
 </body></html>
