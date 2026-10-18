@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Apps & Games</title>
+  <style>
+    :root {
+      --bg: #f4f4f7;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #121214; --text: #f5f5f7; --muted: #9a9aa0; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      text-align: center;
+      padding: 48px 16px 16px;
+    }
+    h1 { margin: 0; font-size: 2.2rem; }
+    header p { margin: 8px 0 0; color: var(--muted); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 32px 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 32px 16px 64px;
+    }
+    .tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .icon {
+      width: 120px;
+      height: 120px;
+      border-radius: 28px;
+      display: grid;
+      place-items: center;
+      font-size: 60px;
+      background: #888;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .icon img { width: 100%; height: 100%; object-fit: cover; }
+    .tile:hover .icon,
+    .tile:focus-visible .icon {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+    }
+    .tile:focus-visible { outline: none; }
+    .name {
+      font-weight: 600;
+      text-align: center;
+      font-size: 1rem;
+    }
+    .empty { text-align: center; color: var(--muted); grid-column: 1 / -1; }
+
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 24px 12px; }
+      .icon { width: 88px; height: 88px; font-size: 44px; border-radius: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>My Apps & Games</h1>
+    <p>Things I've built with code and Claude</p>
+  </header>
+
+  <main class="grid" id="grid"></main>
+
+  <script src="apps.js"></script>
+  <script>
+    const grid = document.getElementById("grid");
+    const isImage = (s) => /\.(png|jpe?g|gif|svg|webp)$/i.test(s);
+
+    if (!APPS.length) {
+      grid.innerHTML = '<p class="empty">No apps yet — add one in apps.js</p>';
+    }
+
+    for (const app of APPS) {
+      const tile = document.createElement("a");
+      tile.className = "tile";
+      tile.href = app.link;
+
+      const icon = document.createElement("div");
+      icon.className = "icon";
+      if (app.color) icon.style.background = app.color;
+      if (isImage(app.icon)) {
+        const img = document.createElement("img");
+        img.src = app.icon;
+        img.alt = "";
+        icon.appendChild(img);
+      } else {
+        icon.textContent = app.icon || "📦";
+      }
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = app.name;
+
+      tile.append(icon, name);
+      grid.appendChild(tile);
+    }
+  </script>
+</body>
+</html>

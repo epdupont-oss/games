@@ -1,0 +1,451 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Crate Keeper</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Stencil+One&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one-screen app — stencil header, board fills the middle, controls docked below. Single night-warehouse look by choice. */
+:root {
+  --night: #161c26;
+  --floor: #232b38;
+  --floor-line: #2c3646;
+  --wall: #4a4e5a;
+  --wall-hi: #626775;
+  --wall-lo: #33363f;
+  --oak: #c98a3f;
+  --oak-dark: #8f5a22;
+  --oak-light: #e3ad62;
+  --goal: #4fd1c5;
+  --done: #3fae8a;
+  --stuck: #d5584b;
+  --ink: #eef1f6;
+  --muted: #94a0b4;
+  --panel: #1d2430;
+  --hero: #f3c74a;
+  --display: "Saira Stencil One", "Arial Black", Impact, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--night); color: var(--ink); font-family: var(--body); font-size: 15px;
+  overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.app {
+  height: 100%; display: flex; flex-direction: column; gap: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px; box-sizing: border-box; max-width: 900px; margin: 0 auto;
+}
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { font-family: var(--display); font-size: 26px; letter-spacing: 0.04em; color: var(--hero); line-height: 1; }
+.lvl { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
+.lvl .num { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.lvl .name { font-weight: 700; font-size: 17px; text-wrap: balance; text-align: right; }
+.hud { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat {
+  background: var(--panel); border-radius: 8px; padding: 6px 12px; display: flex; gap: 8px; align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.stat b { font-size: 18px; }
+.stat span { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+.board { position: relative; touch-action: none; }
+.cell { position: absolute; box-sizing: border-box; }
+.floor { background: var(--floor); box-shadow: inset 0 0 0 1px var(--floor-line); }
+.wall {
+  background: linear-gradient(180deg, var(--wall-hi), var(--wall) 30%, var(--wall-lo));
+  border-radius: 3px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25);
+}
+.goal::after {
+  content: ""; position: absolute; inset: 30%; border-radius: 50%;
+  border: 3px solid var(--goal); box-shadow: 0 0 10px var(--goal);
+}
+.mover { position: absolute; left: 0; top: 0; transition: transform 110ms ease-out; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .mover { transition: none; } }
+.crate i { position: absolute; inset: 7%; }
+.crate i {
+  display: block; box-sizing: border-box; border-radius: 4px;
+  border: 3px solid var(--oak-dark);
+  background:
+    linear-gradient(45deg, transparent 44%, var(--oak-dark) 44%, var(--oak-dark) 56%, transparent 56%),
+    repeating-linear-gradient(0deg, var(--oak) 0 22%, var(--oak-light) 22% 25%);
+  box-shadow: 0 3px 0 rgba(0,0,0,.35);
+  transition: filter 150ms, border-color 150ms;
+}
+.crate.on i {
+  border-color: #1f6b54;
+  background:
+    linear-gradient(45deg, transparent 44%, #1f6b54 44%, #1f6b54 56%, transparent 56%),
+    repeating-linear-gradient(0deg, var(--done) 0 22%, #6fd3ad 22% 25%);
+}
+.crate.stuck i { border-color: var(--stuck); box-shadow: 0 0 0 3px var(--stuck), 0 3px 0 rgba(0,0,0,.35); }
+.keeper { z-index: 2; }
+.keeper i {
+  display: block; position: absolute; inset: 12%; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3b8, var(--hero) 45%, #c9941c);
+  box-shadow: 0 3px 0 rgba(0,0,0,.35);
+}
+.keeper i::before, .keeper i::after {
+  content: ""; position: absolute; top: 38%; width: 13%; height: 18%; border-radius: 50%; background: #2a2210;
+}
+.keeper i::before { left: 30%; } .keeper i::after { right: 30%; }
+.keeper[data-dir="l"] i::before, .keeper[data-dir="l"] i::after { transform: translateX(-60%); }
+.keeper[data-dir="r"] i::before, .keeper[data-dir="r"] i::after { transform: translateX(60%); }
+.keeper[data-dir="u"] i::before, .keeper[data-dir="u"] i::after { top: 24%; }
+.keeper[data-dir="d"] i::before, .keeper[data-dir="d"] i::after { top: 50%; }
+.bump { animation: bump 160ms; }
+@keyframes bump { 50% { filter: brightness(1.4); } }
+.controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+button {
+  font-family: var(--body); font-weight: 700; font-size: 15px; color: var(--ink);
+  background: var(--panel); border: 1px solid var(--floor-line); border-radius: 10px;
+  padding: 10px 14px; cursor: pointer; touch-action: manipulation;
+}
+button:hover { background: var(--floor); }
+button:focus-visible { outline: 3px solid var(--goal); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: default; }
+.primary { background: var(--hero); color: #2a2210; border-color: var(--hero); }
+.primary:hover { background: #ffd866; }
+.pad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 46px); gap: 6px; }
+.pad button { padding: 0; font-size: 20px; }
+.pad .u { grid-column: 2; grid-row: 1; } .pad .l { grid-column: 1; grid-row: 2; }
+.pad .d { grid-column: 2; grid-row: 2; } .pad .r { grid-column: 3; grid-row: 2; }
+.hint { font-size: 13px; color: var(--muted); max-width: 40ch; }
+.overlay {
+  position: fixed; inset: 0; background: rgba(10,13,19,.78); display: flex; align-items: center; justify-content: center;
+  padding: 16px; z-index: 20;
+}
+.card {
+  background: var(--panel); border-radius: 16px; padding: 24px; width: min(560px, 100%); max-height: 100%;
+  overflow: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;
+  border: 1px solid var(--floor-line);
+}
+.card h2 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; color: var(--hero); letter-spacing: .03em; }
+.card p { margin: 0; color: var(--muted); line-height: 1.5; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px;
+  background: var(--floor);
+}
+.tile .n { font-family: var(--display); font-size: 22px; color: var(--ink); line-height: 1; }
+.tile .t { font-size: 12px; font-weight: 400; color: var(--muted); }
+.tile.solved { background: #1f3a33; border-color: var(--done); }
+.tile.solved .n { color: #8fe3c4; }
+.tile.current { outline: 2px solid var(--hero); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.result { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 520px) {
+  .brand { font-size: 21px; }
+  .controls { justify-content: center; }
+  .hint { display: none; }
+}
+</style>
+
+<div class="app">
+  <header>
+    <div class="brand">CRATE KEEPER</div>
+    <div class="lvl"><div class="num" id="lvlNum">Level 1 of 17</div><div class="name" id="lvlName"></div></div>
+  </header>
+  <div class="hud">
+    <div class="stat"><b id="moves">0</b><span>Moves</span></div>
+    <div class="stat"><b id="pushes">0</b><span>Pushes</span></div>
+    <div class="stat"><b id="par">0</b><span>Best possible pushes</span></div>
+    <div class="stat"><b id="left">0</b><span>Crates to go</span></div>
+  </div>
+  <div class="stage" id="stage"><div class="board" id="board" aria-label="Game board"></div></div>
+  <div class="controls">
+    <div class="btns">
+      <button id="undo" title="Undo (U or Z)">↶ Undo</button>
+      <button id="restart" title="Restart (R)">⟲ Restart</button>
+      <button id="levels">Levels</button>
+    </div>
+    <div class="hint">Push crates onto the rings. You can only push, never pull. A crate turns red when it's stuck in a corner: undo and try another way. Tap a square to walk there, or swipe.</div>
+    <div class="pad" aria-label="Direction buttons">
+      <button class="u" data-d="u" aria-label="Up">▲</button>
+      <button class="l" data-d="l" aria-label="Left">◀</button>
+      <button class="d" data-d="d" aria-label="Down">▼</button>
+      <button class="r" data-d="r" aria-label="Right">▶</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="winBox" hidden>
+  <div class="card">
+    <h2 id="winTitle">Level cleared</h2>
+    <p id="winText"></p>
+    <div class="row"><button id="replay">Play again</button><button class="primary" id="next">Next level</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="levelBox" hidden>
+  <div class="card">
+    <h2>Levels</h2>
+    <p>Levels get harder as you go. Green ones are done.</p>
+    <div class="grid" id="levelGrid"></div>
+    <div class="row"><button id="closeLevels">Close</button></div>
+  </div>
+</div>
+
+<script>
+const LEVELS = [
+ {
+  "name": "First Push",
+  "map": "#######\n#     #\n#@ $ .#\n#     #\n#######",
+  "par": 2
+ },
+ {
+  "name": "Two Crates",
+  "map": "#######\n#  .  #\n#  $  #\n#@    #\n#  $  #\n#  .  #\n#######",
+  "par": 2
+ },
+ {
+  "name": "The Nook",
+  "map": "  ####\n###  #\n# $  #\n# #. ##\n# .$  #\n##@   #\n ######",
+  "par": 3
+ },
+ {
+  "name": "Twin Rooms",
+  "map": "########\n#  #   #\n# $..$ #\n#  ##  #\n#@$..$ #\n#      #\n########",
+  "par": 4
+ },
+ {
+  "name": "Around the Pillar",
+  "map": "########\n#      #\n# $$ @ #\n#  ##  #\n# ..   #\n########",
+  "par": 6
+ },
+ {
+  "name": "Corridor",
+  "map": " ######\n #    #\n##$## #\n#  .  #\n# #$#.#\n#@    #\n#######",
+  "par": 6
+ },
+ {
+  "name": "Tight Squeeze",
+  "map": " #######\n #  .  #\n## $#$ ##\n#  .@.  #\n## $#$ ##\n #  .  #\n #######",
+  "par": 6
+ },
+ {
+  "name": "Four Corners",
+  "map": "#######\n#.   .#\n# $ $ #\n#  @  #\n# $ $ #\n#.   .#\n#######",
+  "par": 8
+ },
+ {
+  "name": "Pinball",
+  "map": "########\n#      #\n# #  #$#\n#   #  #\n#  #  .#\n#$#  # #\n#+$ .  #\n########",
+  "par": 9
+ },
+ {
+  "name": "Back Office",
+  "map": "#######\n#.    ###\n#*# #   #\n#+$   # #\n###$#   #\n  #   ###\n  #####",
+  "par": 10
+ },
+ {
+  "name": "Crossroads",
+  "map": "#########\n#   #   #\n# $ . $ #\n## #.# ##\n# $ . $ #\n#   @  .#\n#########",
+  "par": 11
+ },
+ {
+  "name": "Shelving",
+  "map": " #######\n##     #\n# $# #.#\n# $   .#\n# # #  #\n#@$ . ##\n#######",
+  "par": 12
+ },
+ {
+  "name": "Long Hall",
+  "map": "  #######\n### . $@#\n#.$ # #$##\n# #    . #\n#   $## ##\n## #     #\n #   #.  #\n #########",
+  "par": 12
+ },
+ {
+  "name": "Night Shift",
+  "map": "##########\n#    # @.#\n# $#   $.#\n#  ##$#  #\n#  . . ###\n###$#  $ #\n  #.     #\n  ########",
+  "par": 13
+ },
+ {
+  "name": "Two Floors",
+  "map": "#########\n#   #   #\n#    $  #\n##*###.##\n#+$     #\n#.$ #   #\n#########",
+  "par": 18
+ },
+ {
+  "name": "Head Clerk",
+  "map": "##########\n# @  #   #\n# $# $ . #\n#  ##*#..#\n#      ###\n### # $  #\n  #      #\n  ########",
+  "par": 20
+ },
+ {
+  "name": "Loading Dock",
+  "map": "#########\n#..   # #\n#..## $ #\n#   $@$ #\n#    $  #\n###    ##\n  ######",
+  "par": 23
+ }
+];
+
+const DIRS = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] };
+const KEY = "crate-keeper-v1";
+let saved = { solved: {}, level: 0 };
+try { const s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s) saved = Object.assign(saved, s); } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} }
+
+let L, walls, goals, inside, boxes, player, history, moves, pushes, cell, boxEls, playerEl, won, busy = false, dir = "d";
+const $ = id => document.getElementById(id);
+const key = (x, y) => x + "," + y;
+
+function load(i, state) {
+  const lv = LEVELS[i]; L = i; saved.level = i; save();
+  const rows = lv.map.split("\n");
+  walls = new Set(); goals = new Set(); boxes = new Set(); player = null;
+  rows.forEach((r, y) => [...r].forEach((c, x) => {
+    if (c === "#") walls.add(key(x, y));
+    if (".*+".includes(c)) goals.add(key(x, y));
+    if ("$*".includes(c)) boxes.add(key(x, y));
+    if ("@+".includes(c)) player = [x, y];
+  }));
+  lv.w = Math.max(...rows.map(r => r.length)); lv.h = rows.length;
+  inside = new Set([key(...player)]); const q = [player];
+  while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of Object.values(DIRS)) {
+    const k = key(x + dx, y + dy); if (!walls.has(k) && !inside.has(k)) { inside.add(k); q.push([x + dx, y + dy]); } } }
+  history = []; moves = 0; pushes = 0; won = false;
+  if (state) { boxes = new Set(state.boxes); player = state.player; moves = state.moves; pushes = state.pushes; }
+  $("lvlNum").textContent = `Level ${i + 1} of ${LEVELS.length}`;
+  $("lvlName").textContent = lv.name;
+  $("par").textContent = lv.par;
+  build(); update(true);
+}
+
+function build() {
+  const lv = LEVELS[L], st = $("stage"), b = $("board");
+  cell = Math.max(18, Math.min(68, Math.floor(Math.min(st.clientWidth / lv.w, st.clientHeight / lv.h))));
+  b.style.width = lv.w * cell + "px"; b.style.height = lv.h * cell + "px";
+  b.innerHTML = "";
+  const place = (el, x, y) => { el.style.left = x * cell + "px"; el.style.top = y * cell + "px"; el.style.width = el.style.height = cell + "px"; };
+  for (let y = 0; y < lv.h; y++) for (let x = 0; x < lv.w; x++) {
+    const k = key(x, y); let cls = null;
+    if (walls.has(k)) cls = "wall"; else if (inside.has(k)) cls = "floor" + (goals.has(k) ? " goal" : "");
+    if (cls) { const d = document.createElement("div"); d.className = "cell " + cls; d.dataset.x = x; d.dataset.y = y; place(d, x, y); b.appendChild(d); }
+  }
+  boxEls = new Map();
+  for (const k of boxes) { const d = document.createElement("div"); d.className = "mover crate"; d.innerHTML = "<i></i>"; d.style.width = d.style.height = cell + "px"; b.appendChild(d); boxEls.set(k, d); }
+  playerEl = document.createElement("div"); playerEl.className = "mover keeper"; playerEl.innerHTML = "<i></i>";
+  playerEl.style.width = playerEl.style.height = cell + "px"; b.appendChild(playerEl);
+}
+
+function stuck(k) {
+  if (goals.has(k)) return false;
+  const [x, y] = k.split(",").map(Number), w = (a, b) => walls.has(key(a, b));
+  return (w(x - 1, y) || w(x + 1, y)) && (w(x, y - 1) || w(x, y + 1));
+}
+
+function update(instant) {
+  const pos = (el, x, y) => { if (instant) el.style.transition = "none"; el.style.transform = `translate(${x * cell}px, ${y * cell}px)`; if (instant) { el.offsetWidth; el.style.transition = ""; } };
+  for (const [k, el] of boxEls) { const [x, y] = k.split(",").map(Number); pos(el, x, y); el.classList.toggle("on", goals.has(k)); el.classList.toggle("stuck", stuck(k)); }
+  pos(playerEl, ...player); playerEl.dataset.dir = dir;
+  $("moves").textContent = moves; $("pushes").textContent = pushes;
+  let left = 0; for (const g of goals) if (!boxes.has(g)) left++;
+  $("left").textContent = left;
+  $("undo").disabled = history.length === 0;
+  if (left === 0 && !won) { won = true; setTimeout(win, 260); }
+}
+
+function step(d) {
+  if (won) return false;
+  dir = d; const [dx, dy] = DIRS[d], nx = player[0] + dx, ny = player[1] + dy, nk = key(nx, ny);
+  if (walls.has(nk)) { bump(); return false; }
+  if (boxes.has(nk)) {
+    const bk = key(nx + dx, ny + dy);
+    if (walls.has(bk) || boxes.has(bk)) { bump(); return false; }
+    history.push({ player, boxMove: [nk, bk], moves, pushes });
+    const el = boxEls.get(nk); boxEls.delete(nk); boxEls.set(bk, el);
+    boxes.delete(nk); boxes.add(bk); pushes++;
+  } else history.push({ player, boxMove: null, moves, pushes });
+  player = [nx, ny]; moves++; update(); return true;
+}
+function bump() { playerEl.classList.remove("bump"); void playerEl.offsetWidth; playerEl.classList.add("bump"); update(); }
+
+function undo() {
+  const h = history.pop(); if (!h) return;
+  if (h.boxMove) { const [from, to] = h.boxMove; const el = boxEls.get(to); boxEls.delete(to); boxEls.set(from, el); boxes.delete(to); boxes.add(from); }
+  const [dx, dy] = [player[0] - h.player[0], player[1] - h.player[1]];
+  dir = Object.keys(DIRS).find(k => DIRS[k][0] === dx && DIRS[k][1] === dy) || dir;
+  player = h.player; moves = h.moves; pushes = h.pushes; won = false; $("winBox").hidden = true; update();
+}
+
+// walk to a tapped square via the shortest open path
+function walkTo(tx, ty) {
+  if (busy || won) return;
+  const target = key(tx, ty);
+  if (player[0] === tx && player[1] === ty) return;
+  // tapping a crate next to you pushes it
+  if (boxes.has(target) && Math.abs(tx - player[0]) + Math.abs(ty - player[1]) === 1) {
+    const d = Object.keys(DIRS).find(k => DIRS[k][0] === tx - player[0] && DIRS[k][1] === ty - player[1]); step(d); return;
+  }
+  if (!inside.has(target) || boxes.has(target)) return;
+  const prev = new Map([[key(...player), null]]), q = [player];
+  while (q.length) {
+    const [x, y] = q.shift(); if (key(x, y) === target) break;
+    for (const [d, [dx, dy]] of Object.entries(DIRS)) {
+      const k = key(x + dx, y + dy);
+      if (!prev.has(k) && inside.has(k) && !boxes.has(k)) { prev.set(k, [key(x, y), d]); q.push([x + dx, y + dy]); }
+    }
+  }
+  if (!prev.has(target)) return;
+  const path = []; let k = target; while (prev.get(k)) { const [p, d] = prev.get(k); path.unshift(d); k = p; }
+  busy = true;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  (function go() { if (!path.length) { busy = false; return; } step(path.shift()); setTimeout(go, reduce ? 0 : 90); })();
+}
+
+function win() {
+  const lv = LEVELS[L], best = saved.solved[L];
+  if (!best || pushes < best) saved.solved[L] = pushes; save();
+  const perfect = pushes === lv.par;
+  $("winTitle").textContent = L === LEVELS.length - 1 ? "Warehouse cleared!" : "Level cleared";
+  $("winText").textContent = `${moves} moves, ${pushes} pushes. ` + (perfect ? "That's the fewest pushes possible." : `It can be done in ${lv.par} pushes, if you want a challenge.`);
+  $("next").hidden = L === LEVELS.length - 1;
+  $("winBox").hidden = false; (L === LEVELS.length - 1 ? $("replay") : $("next")).focus();
+}
+
+function showLevels() {
+  const g = $("levelGrid"); g.innerHTML = "";
+  LEVELS.forEach((lv, i) => {
+    const b = document.createElement("button"); b.className = "tile" + (saved.solved[i] != null ? " solved" : "") + (i === L ? " current" : "");
+    b.innerHTML = `<span class="n">${i + 1}</span><span class="t"></span>`; b.querySelector(".t").textContent = lv.name;
+    b.onclick = () => { $("levelBox").hidden = true; load(i); }; g.appendChild(b);
+  });
+  $("levelBox").hidden = false;
+}
+
+// input
+document.addEventListener("keydown", e => {
+  if (!$("levelBox").hidden) { if (e.key === "Escape") $("levelBox").hidden = true; return; }
+  if (!$("winBox").hidden) { if (e.key === "Enter" && !$("next").hidden) { e.preventDefault(); $("next").click(); } else if (/^[uz]$/i.test(e.key)) undo(); return; }
+  const m = { ArrowUp: "u", ArrowDown: "d", ArrowLeft: "l", ArrowRight: "r", w: "u", s: "d", a: "l", d: "r" }[e.key];
+  if (m && !busy) { e.preventDefault(); step(m); }
+  else if (/^[uz]$/i.test(e.key)) undo();
+  else if (/^r$/i.test(e.key)) load(L);
+});
+document.querySelectorAll(".pad button").forEach(b => b.addEventListener("click", () => { if (!busy) step(b.dataset.d); }));
+$("undo").onclick = undo;
+$("restart").onclick = () => load(L);
+$("levels").onclick = showLevels;
+$("closeLevels").onclick = () => { $("levelBox").hidden = true; };
+$("next").onclick = () => { $("winBox").hidden = true; load(Math.min(L + 1, LEVELS.length - 1)); };
+$("replay").onclick = () => { $("winBox").hidden = true; load(L); };
+
+let t0 = null;
+$("board").addEventListener("pointerdown", e => { t0 = { x: e.clientX, y: e.clientY }; });
+$("board").addEventListener("pointerup", e => {
+  if (!t0) return; const dx = e.clientX - t0.x, dy = e.clientY - t0.y; t0 = null;
+  if (Math.hypot(dx, dy) > 24) { if (!busy) step(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "r" : "l") : (dy > 0 ? "d" : "u")); return; }
+  const r = $("board").getBoundingClientRect();
+  walkTo(Math.floor((e.clientX - r.left) / cell), Math.floor((e.clientY - r.top) / cell));
+});
+
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { build(); update(true); }, 120); });
+
+function start(data) {
+  const st = data && data.state;
+  load(st ? st.level : Math.min(saved.level || 0, LEVELS.length - 1), st ? st : null);
+}
+window.claude?.hot?.snapshot?.(() => ({ state: { level: L, boxes: [...boxes], player, moves, pushes } }));
+const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot); else boot();
+</script>
+
+</body></html>

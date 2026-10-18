@@ -1,0 +1,291 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Banana Duel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<style>
+/* Layout: one 640x350 EGA screen centred on a dark bench, a thin control strip underneath. Single deliberate dark look. */
+:root{
+  --bench:#0e0e12;
+  --bezel:#1c1c23;
+  --ega-blue:#0000AA;
+  --ega-gray:#AAAAAA;
+  --ega-dark:#555555;
+  --ega-yellow:#FFFF55;
+  --font-dos:"VT323","Courier New",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{
+  background:var(--bench);color:var(--ega-gray);font-family:var(--font-dos);font-size:20px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;
+  box-sizing:border-box;overflow:hidden;
+}
+#scr{
+  display:block;max-width:100%;aspect-ratio:640/350;
+  width:min(100%, calc((100dvh - 110px) * 640 / 350));
+  image-rendering:pixelated;image-rendering:crisp-edges;background:#000;
+  box-shadow:0 0 0 8px var(--bezel),0 0 0 9px #2d2d38,0 24px 70px rgba(0,0,0,.7);
+  touch-action:manipulation;cursor:text;
+}
+.bar{display:flex;gap:8px 20px;flex-wrap:wrap;justify-content:center;align-items:center;color:var(--ega-dark);max-width:100%}
+.bar kbd{font:inherit;color:var(--ega-gray)}
+.bar button{font:inherit;background:transparent;border:1px solid var(--ega-dark);color:var(--ega-gray);padding:0 12px;cursor:pointer}
+.bar button:hover{border-color:var(--ega-gray)}
+.bar button:focus-visible{outline:2px solid var(--ega-yellow);outline-offset:2px}
+#kb{position:fixed;left:-200px;top:0;width:20px;height:20px;opacity:0;font-size:16px}
+</style>
+
+<canvas id="scr" width="640" height="350" aria-label="Banana Duel game screen"></canvas>
+<div class="bar">
+  <span>Type <kbd>angle</kbd> ⏎ then <kbd>velocity</kbd> ⏎</span>
+  <span><kbd>Esc</kbd> menu</span>
+  <button id="snd" type="button">Sound: on</button>
+</div>
+<input id="kb" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Keyboard input">
+
+<script>
+(()=>{
+'use strict';
+const cv=document.getElementById('scr'),c=cv.getContext('2d'),kb=document.getElementById('kb');
+const SW=640,SH=350,BOTTOM=335;
+const C={sky:'#0000AA',sun:'#FFFF55',lit:'#FFFF55',dark:'#555555',bld:['#00AAAA','#AA0000','#AAAAAA'],gor:'#AA5500',ban:'#FFFF55',red:'#FF5555',white:'#FFFFFF',gray:'#AAAAAA',black:'#000000',arrow:'#FF5555'};
+const rnd=(a,b)=>a+Math.random()*(b-a), ri=(a,b)=>Math.floor(rnd(a,b+1));
+
+/* ---------- terrain ---------- */
+const tc=document.createElement('canvas');tc.width=SW;tc.height=SH;const tx=tc.getContext('2d',{willReadFrequently:true});
+const mask=new Uint8Array(SW*SH);
+function genCity(){
+  tx.globalCompositeOperation='source-over';tx.clearRect(0,0,SW,SH);
+  const blds=[];const pat=ri(1,6);let x=2;
+  while(x<SW-10){
+    let w=ri(37,74);if(SW-(x+w)<37)w=SW-x;
+    const u=(x+w/2)/SW;let f;
+    switch(pat){case 1:f=.25+.55*u;break;case 2:f=.8-.55*u;break;case 3:f=.25+.55*Math.abs(2*u-1);break;case 4:f=.8-.55*Math.abs(2*u-1);break;default:f=rnd(.2,.8);}
+    const h=Math.max(40,Math.min(240,Math.round(f*230+rnd(-30,30))));
+    const top=BOTTOM-h,col=C.bld[ri(0,2)];
+    tx.fillStyle=col;tx.fillRect(x,top,w-2,h);
+    for(let wx=x+3;wx<x+w-7;wx+=10)for(let wy=top+3;wy<BOTTOM-8;wy+=15){tx.fillStyle=Math.random()<.72?C.lit:C.dark;tx.fillRect(wx,wy,3,6);}
+    blds.push({x,w,top});x+=w;
+  }
+  const d=tx.getImageData(0,0,SW,SH).data;for(let i=0;i<mask.length;i++)mask[i]=d[i*4+3]>0?1:0;
+  const a=blds[ri(1,2)],b=blds[blds.length-1-ri(1,2)];
+  G.gor=[{x:Math.round(a.x+(a.w-2)/2-15),y:a.top-30,alive:true},{x:Math.round(b.x+(b.w-2)/2-15),y:b.top-30,alive:true}];
+}
+function carve(cx,cy,r){
+  tx.save();tx.globalCompositeOperation='destination-out';tx.beginPath();tx.arc(cx,cy,r,0,Math.PI*2);tx.fill();tx.restore();
+  for(let y=Math.max(0,Math.floor(cy-r));y<=Math.min(SH-1,Math.ceil(cy+r));y++)for(let x=Math.max(0,Math.floor(cx-r));x<=Math.min(SW-1,Math.ceil(cx+r));x++)
+    if((x-cx)*(x-cx)+(y-cy)*(y-cy)<=r*r)mask[y*SW+x]=0;
+}
+
+/* ---------- sprites ---------- */
+function drawGorilla(x,y,arms){
+  const R=(a,b,w,h,col)=>{c.fillStyle=col||C.gor;c.fillRect(x+a,y+b,w,h);};
+  R(11,0,8,7);R(11,2,8,1,C.black);R(12,2,2,1,C.gor);R(16,2,2,1,C.gor);R(12,3,2,1,C.black);R(16,3,2,1,C.black);R(13,5,4,1,C.black);
+  R(13,7,4,1);R(8,8,14,10);
+  R(10,10,4,1,C.black);R(16,10,4,1,C.black);R(9,11,1,2,C.black);R(20,11,1,2,C.black);R(14,15,2,1,C.black);
+  R(9,18,12,3);R(8,21,5,6);R(17,21,5,6);R(6,27,7,3);R(17,27,7,3);
+  if(arms===1||arms===3){R(4,0,4,9);R(6,7,3,3);}else{R(4,9,4,13);R(3,20,5,3);}
+  if(arms===2||arms===3){R(22,0,4,9);R(21,7,3,3);}else{R(22,9,4,13);R(22,20,5,3);}
+}
+function drawBanana(x,y,frame){
+  c.save();c.translate(Math.round(x),Math.round(y));c.rotate(frame*Math.PI/2);
+  c.strokeStyle=C.ban;c.lineWidth=2.2;c.beginPath();c.arc(0,0,4,.35*Math.PI,1.45*Math.PI);c.stroke();
+  c.fillStyle='#AA5500';c.fillRect(-1,-5,2,2);c.restore();
+}
+/* the sun lives on its own small canvas so bananas can bite slices out of it */
+const SUN_X=320,SUN_Y=26,SUN_S=48,SUN_O=SUN_S/2;
+const sunCv=document.createElement('canvas');sunCv.width=sunCv.height=SUN_S;const sx2=sunCv.getContext('2d',{willReadFrequently:true});
+const sunMask=new Uint8Array(SUN_S*SUN_S);
+function resetSun(){
+  const s=sx2;s.globalCompositeOperation='source-over';s.clearRect(0,0,SUN_S,SUN_S);s.strokeStyle=C.sun;s.lineWidth=1;s.beginPath();
+  for(let i=0;i<16;i++){const a=i*Math.PI/8,r0=13,r1=i%2?19:22;s.moveTo(SUN_O+Math.cos(a)*r0,SUN_O+Math.sin(a)*r0);s.lineTo(SUN_O+Math.cos(a)*r1,SUN_O+Math.sin(a)*r1);}s.stroke();
+  s.fillStyle=C.sun;s.beginPath();s.arc(SUN_O,SUN_O,12,0,Math.PI*2);s.fill();
+  const d=s.getImageData(0,0,SUN_S,SUN_S).data;for(let i=0;i<sunMask.length;i++)sunMask[i]=d[i*4+3]>60?1:0;
+}
+function biteSun(px,py){
+  const lx=px-(SUN_X-SUN_O),ly=py-(SUN_Y-SUN_O);if(lx<0||ly<0||lx>=SUN_S||ly>=SUN_S)return;
+  if(!sunMask[(ly|0)*SUN_S+(lx|0)])return;
+  const r=4.5;sx2.save();sx2.globalCompositeOperation='destination-out';sx2.beginPath();sx2.arc(lx,ly,r,0,Math.PI*2);sx2.fill();sx2.restore();
+  for(let y=Math.max(0,Math.floor(ly-r));y<=Math.min(SUN_S-1,Math.ceil(ly+r));y++)for(let x=Math.max(0,Math.floor(lx-r));x<=Math.min(SUN_S-1,Math.ceil(lx+r));x++)
+    if((x-lx)*(x-lx)+(y-ly)*(y-ly)<=r*r)sunMask[y*SUN_S+x]=0;
+  beep(1400,.01);
+}
+function drawSun(){c.drawImage(sunCv,SUN_X-SUN_O,SUN_Y-SUN_O);}
+resetSun();
+
+/* ---------- text ---------- */
+let FS=16;
+function T(s,x,y,col,bg){c.font=FS+'px VT323, "Courier New", monospace';c.textBaseline='top';const w=Math.ceil(c.measureText(s).width);
+  if(bg){c.fillStyle=bg;c.fillRect(x,y,w,14);}c.fillStyle=col||C.white;c.fillText(s,x,y-1);return w;}
+const W=s=>{c.font=FS+'px VT323, "Courier New", monospace';return Math.ceil(c.measureText(s).width);};
+const centre=(s,y,col,bg)=>T(s,Math.round((SW-W(s))/2),y,col,bg);
+function fitFont(){c.font='16px VT323, "Courier New", monospace';const cw=c.measureText('MMMMMMMMMM').width/10;FS=Math.max(12,Math.min(22,16*8/cw));}
+if(document.fonts&&document.fonts.load)document.fonts.load('16px VT323').then(fitFont,fitFont);fitFont();
+
+/* ---------- sound (PC-speaker style square waves) ---------- */
+let AC=null,muted=false;try{muted=localStorage.getItem('bd_muted')==='1';}catch(e){}
+const sndBtn=document.getElementById('snd');const showSnd=()=>{sndBtn.textContent='Sound: '+(muted?'off':'on');};showSnd();
+sndBtn.addEventListener('click',()=>{audio();muted=!muted;try{localStorage.setItem('bd_muted',muted?'1':'0');}catch(e){}showSnd();sndBtn.blur();if(!muted)beep(880,.06);});
+function audio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}}if(AC.state!=='running')AC.resume();return AC;}
+function beep(f,dur,delay){if(!AC||muted)return;const t=AC.currentTime+(delay||0),o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f;
+  g.gain.setValueAtTime(.05,t);g.gain.setValueAtTime(0,t+dur);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+dur+.02);}
+function rumble(f0,f1,dur,jit){const n=Math.floor(dur/.014);for(let i=0;i<n;i++){const k=i/n;beep(Math.max(30,(f0+(f1-f0)*k)*(1+rnd(-jit,jit))),.014,i*.014);}}
+function tune(notes,step){let t=0;for(const [f,l] of notes){if(f)beep(f,l*step*.9,t);t+=l*step;}}
+
+/* ---------- state ---------- */
+const G={state:'setup',set:{n1:'Player 1',n2:'Player 2',pts:3,grav:9.8},field:0,buf:'',scores:[0,0],cur:0,first:0,gor:[],wind:0,
+  phase:'angle',angle:0,ban:null,boom:null,timer:0,arms:[0,0],dead:-1,scorer:-1,acc:0,time:0,lastShot:[null,null]};
+const FIELDS=[
+  {q:"Name of Player 1 (Default = 'Player 1'): ",k:'n1',num:false},
+  {q:"Name of Player 2 (Default = 'Player 2'): ",k:'n2',num:false},
+  {q:'Play to how many total points (Default = 3)? ',k:'pts',num:true},
+  {q:'Gravity in Meters/Sec (Earth = 9.8)? ',k:'grav',num:true}];
+const DEF={n1:'Player 1',n2:'Player 2',pts:3,grav:9.8};
+
+function typing(){return (G.state==='setup')||(G.state==='input');}
+function numericNow(){return G.state==='input'||(G.state==='setup'&&FIELDS[G.field].num);}
+function sanitize(v){return numericNow()?v.replace(/[^0-9.\-]/g,'').slice(0,6):v.replace(/[^\w .'-]/g,'').slice(0,10);}
+function syncKb(){kb.value=G.buf;kb.inputMode=numericNow()?'decimal':'text';}
+
+function newRound(){
+  genCity();resetSun();G.wind=ri(1,10)-5;if(ri(1,3)===1)G.wind+=G.wind>0?ri(1,10):-ri(1,10);
+  G.arms=[0,0];G.ban=null;G.boom=null;G.dead=-1;G.cur=G.first;G.first=1-G.first;startTurn();
+}
+function startTurn(){G.state='input';G.phase='angle';G.buf='';syncKb();}
+function startGame(){G.scores=[0,0];G.first=0;newRound();}
+
+function submit(){
+  const v=G.buf.trim();
+  if(G.state==='setup'){
+    const F=FIELDS[G.field];let val;
+    if(F.num){const n=parseFloat(v);val=(v===''||!isFinite(n)||n<=0)?DEF[F.k]:(F.k==='pts'?Math.max(1,Math.min(99,Math.round(n))):Math.min(200,n));}
+    else val=v||DEF[F.k];
+    G.set[F.k]=val;G.field++;G.buf='';if(G.field>=FIELDS.length)G.state='menu';syncKb();beep(660,.03);return;
+  }
+  if(G.state==='input'){
+    const n=parseFloat(v);if(v===''||!isFinite(n))return;
+    if(G.phase==='angle'){G.angle=n;G.phase='velocity';G.buf='';syncKb();return;}
+    throwBanana(G.angle,Math.abs(n));
+  }
+}
+function anyKey(key){
+  if(G.state==='menu'){const k=(key||'').toLowerCase();if(k==='e'){G.state='setup';G.field=0;G.buf='';syncKb();}else if(k==='p'||k==='enter'||k===' '||k==='tap')startGame();return;}
+  if(G.state==='over'){G.state='menu';return;}
+}
+
+/* ---------- throw + flight ---------- */
+function throwBanana(angle,vel){
+  const p=G.cur,g=G.gor[p];let a=p===1?180-angle:angle;a*=Math.PI/180;
+  const sx=p===0?g.x:g.x+30,sy=g.y-7;
+  G.ban={sx,sy,vx:Math.cos(a)*vel,vy:Math.sin(a)*vel,t:0,x:sx,y:sy,frame:0,owner:p};
+  G.lastShot[p]=[angle,vel];G.arms[p]=p===0?1:2;G.timer=.3;G.state='flying';G.acc=0;
+  for(let i=0;i<5;i++)beep(300+i*90,.012,i*.012);
+}
+function stepBanana(){
+  const b=G.ban;b.t+=.1;b.frame=(b.frame+1)%4;
+  const nx=b.sx+b.vx*b.t+.5*(G.wind/5)*b.t*b.t,ny=b.sy+(-b.vy*b.t+.5*G.set.grav*b.t*b.t);
+  const n=Math.max(1,Math.ceil(Math.hypot(nx-b.x,ny-b.y)/1.5));
+  for(let i=1;i<=n;i++){const px=b.x+(nx-b.x)*i/n,py=b.y+(ny-b.y)*i/n;
+    if(px<0||px>=SW||py>=SH){G.ban=null;nextTurn(.25);return;}
+    if(py<0)continue;
+    biteSun(px,py);
+    for(let k=0;k<2;k++){const g=G.gor[k];if(g.alive&&px>=g.x+3&&px<g.x+27&&py>=g.y&&py<g.y+30){hitGorilla(k);return;}}
+    if(mask[(py|0)*SW+(px|0)]){G.ban=null;G.state='booming';G.boom={kind:'bld',x:px,y:py,max:9,t:0};rumble(500,80,.28,.4);return;}}
+  b.x=nx;b.y=ny;
+}
+function hitGorilla(k){
+  const g=G.gor[k];G.ban=null;G.dead=k;G.scorer=k===G.cur?1-k:G.cur;
+  G.state='booming';G.boom={kind:'gor',x:g.x+15,y:g.y+15,max:34,t:0};rumble(900,40,1.1,.6);
+}
+function nextTurn(delay){G.state='wait';G.timer=delay;}
+
+/* ---------- update ---------- */
+function update(dt){
+  G.time+=dt;
+  if(G.timer>0&&G.state==='flying'){G.timer-=dt;if(G.timer<=0)G.arms[G.cur]=0;}
+  switch(G.state){
+    case 'flying':G.acc+=dt;while(G.acc>=1/45&&G.ban){G.acc-=1/45;stepBanana();}break;
+    case 'wait':G.timer-=dt;if(G.timer<=0){G.arms=[0,0];G.cur=1-G.cur;startTurn();}break;
+  }
+  const B=G.boom;
+  if(B){B.t+=dt;const grow=B.kind==='bld'?.22:.75,fade=B.kind==='bld'?.15:.35;
+    if(!B.carved&&B.t>=grow){B.carved=true;carve(B.x,B.y,B.max);if(B.kind==='gor')G.gor[G.dead].alive=false;}
+    if(B.t>=grow+fade){G.boom=null;
+      if(B.kind==='bld')nextTurn(.15);
+      else{G.state='dance';G.timer=2.2;G.scores[G.scorer]++;const w=G.gor[G.scorer];if(w.alive)tune([[523,1],[659,1],[784,1],[659,1],[784,1],[1047,3]],.11);}}}
+  if(G.state==='dance'){G.timer-=dt;const w=G.scorer;G.arms[w]=Math.floor(G.time*4)%2?1:2;
+    if(G.timer<=0){if(G.scores[G.scorer]>=G.set.pts){G.state='over';tune([[392,2],[330,2],[262,4]],.12);}else newRound();}}
+}
+
+/* ---------- render ---------- */
+function render(){
+  if(G.state==='setup'||G.state==='menu'||G.state==='over'){textScreen();return;}
+  c.fillStyle=C.sky;c.fillRect(0,0,SW,SH);drawSun();c.drawImage(tc,0,0);
+  G.gor.forEach((g,i)=>{if(g.alive)drawGorilla(g.x,g.y,G.arms[i]);});
+  if(G.ban&&G.ban.y>=-4)drawBanana(G.ban.x,G.ban.y,G.ban.frame);
+  const B=G.boom;
+  if(B){const grow=B.kind==='bld'?.22:.75,fade=B.kind==='bld'?.15:.35;
+    if(B.t<grow){const k=B.t/grow;if(B.kind==='gor'){[1,.75,.5].forEach((f,i)=>{c.fillStyle=[C.red,'#FFAA55',C.sun][(i+Math.floor(B.t*14))%3];c.beginPath();c.arc(B.x,B.y,B.max*k*f,0,Math.PI*2);c.fill();});}
+      else{c.fillStyle=C.red;c.beginPath();c.arc(B.x,B.y,B.max*k,0,Math.PI*2);c.fill();}}
+    else{const k=1-(B.t-grow)/fade;c.fillStyle=C.red;c.beginPath();c.arc(B.x,B.y,Math.max(0,B.max*k),0,Math.PI*2);c.fill();}}
+  T(G.set.n1,1,1,C.white,C.sky);T(G.set.n2,SW-W(G.set.n2)-1,1,C.white,C.sky);
+  if(G.state==='input'){
+    const x0=G.cur===0?1:SW-W('Velocity: 000000_')-1,cur=(G.time%.5)<.27?'_':' ';
+    const last=G.lastShot[G.cur];
+    if(G.phase==='angle'){T('Angle: '+G.buf+cur,x0,16,C.white,C.sky);if(last)T('last '+last[0]+' / '+last[1],x0,44,C.gray,C.sky);}
+    else{T('Angle: '+G.angle,x0,16,C.white,C.sky);T('Velocity: '+G.buf+cur,x0,30,C.white,C.sky);}
+  }
+  centre(' '+G.scores[0]+'>Score<'+G.scores[1]+' ',BOTTOM-14,C.white,C.sky);
+  if(G.wind){const L=G.wind*6,y=SH-7;c.strokeStyle=C.arrow;c.lineWidth=1;c.beginPath();c.moveTo(320,y+.5);c.lineTo(320+L,y+.5);
+    const d=Math.sign(L);c.moveTo(320+L,y+.5);c.lineTo(320+L-d*4,y-2.5);c.moveTo(320+L,y+.5);c.lineTo(320+L-d*4,y+3.5);c.stroke();}
+}
+function textScreen(){
+  c.fillStyle=C.black;c.fillRect(0,0,SW,SH);
+  if(G.state==='over'){
+    centre('GAME OVER!',90,C.white);centre('Score:',130,C.gray);
+    const a=G.set.n1,b=G.set.n2,pad=Math.max(a.length,b.length);
+    centre(a.padEnd(pad,' ')+'   '+G.scores[0],150,C.gray);centre(b.padEnd(pad,' ')+'   '+G.scores[1],164,C.gray);
+    centre('Press any key to continue',230,C.white);return;}
+  centre('B A N A N A    D U E L',22,C.sun);
+  centre('Two gorillas, one city skyline, and a pile of exploding bananas.',50,C.gray);
+  centre('Take turns typing an angle and a velocity. Mind the wind.',64,C.gray);
+  let y=104;const cur=(G.time%.5)<.27?'_':' ';
+  for(let i=0;i<FIELDS.length;i++){const F=FIELDS[i];
+    if(i<G.field){T(F.q+G.set[F.k],24,y,C.gray);}
+    else if(i===G.field&&G.state==='setup'){T(F.q+G.buf+cur,24,y,C.white);break;}
+    y+=22;}
+  if(G.state==='menu'){
+    centre('-------------',y+16,C.dark);
+    centre('P = Play Game',y+36,C.white);centre('E = Edit Settings',y+52,C.gray);
+    centre('(tap the screen to play)',y+82,C.dark);}
+}
+
+/* ---------- input ---------- */
+kb.addEventListener('input',()=>{if(!typing()){kb.value='';return;}G.buf=sanitize(kb.value);kb.value=G.buf;});
+kb.addEventListener('keydown',e=>{audio();if(e.key==='Enter'){e.preventDefault();if(typing())submit();else anyKey('enter');}
+  else if(e.key==='Escape'){e.preventDefault();toMenu();}
+  else if(!typing()){e.preventDefault();anyKey(e.key);}});
+window.addEventListener('keydown',e=>{
+  if(e.target===kb)return;if(e.target===sndBtn&&(e.key===' '||e.key==='Enter'))return;
+  audio();
+  if(e.key==='Escape'){toMenu();return;}
+  if(!typing()){if(e.key.length===1||e.key==='Enter'){e.preventDefault();anyKey(e.key);}return;}
+  if(e.key==='Enter'){e.preventDefault();submit();}
+  else if(e.key==='Backspace'){e.preventDefault();G.buf=G.buf.slice(0,-1);}
+  else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){e.preventDefault();G.buf=sanitize(G.buf+e.key);}
+  else return;
+  syncKb();try{kb.focus({preventScroll:true});}catch(_){}
+});
+function toMenu(){if(G.state==='setup'||G.state==='menu')return;G.ban=null;G.boom=null;G.state='menu';syncKb();}
+cv.addEventListener('pointerdown',()=>{audio();if(!typing())anyKey('tap');syncKb();try{kb.focus({preventScroll:true});}catch(_){}});
+
+let last=performance.now();
+function frame(now){let dt=Math.min(.05,(now-last)/1000);last=now;update(dt);render();requestAnimationFrame(frame);}
+syncKb();requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

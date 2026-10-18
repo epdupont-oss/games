@@ -1,0 +1,491 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Wiggle Out</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grandstander:wght@700;800;900&family=Nunito:wght@600;800&display=swap">
+<style>
+/* Layout: one-screen garden game — slim top bar, square soil board centered, worms-left strip below. Single deliberate light look. */
+:root {
+  --grass: #bfe3a6;
+  --grass-deep: #7fbf5e;
+  --soil: #8a5a3c;
+  --soil-dark: #6b432b;
+  --ink: #3b2a1e;
+  --cream: #fffaf0;
+  --heart: #ef4a5f;
+  --sun: #ffc93c;
+  --display: "Grandstander", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+  --body: "Nunito", "Avenir Next", system-ui, sans-serif;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body {
+  background: radial-gradient(circle at 20% 10%, #d8f0c4 0, transparent 40%), radial-gradient(circle at 85% 90%, #a9d98d 0, transparent 45%), var(--grass);
+  color: var(--ink);
+  font-family: var(--body);
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.app {
+  height: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex; flex-direction: column; gap: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+  box-sizing: border-box;
+}
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.brand { font-family: var(--display); font-weight: 900; font-size: 1.5rem; line-height: 1; letter-spacing: .01em; color: var(--soil-dark); }
+.brand span { color: #e2558a; }
+.btn {
+  font: 800 1rem/1 var(--body); color: var(--ink);
+  background: var(--cream); border: 0; border-radius: 999px;
+  padding: 10px 14px; display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 0 3px 0 var(--grass-deep);
+  cursor: pointer;
+}
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--grass-deep); }
+.btn:focus-visible { outline: 3px solid var(--soil-dark); outline-offset: 2px; }
+.btn svg { width: 20px; height: 20px; }
+.btn.icon { padding: 10px; }
+.tools { display: flex; gap: 8px; }
+.hud { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.level-btn { font-family: var(--display); font-size: 1.15rem; }
+.hearts { display: flex; gap: 4px; }
+.hearts svg { width: 30px; height: 30px; transition: transform .25s; }
+.hearts .lost { opacity: .25; transform: scale(.8); filter: grayscale(1); }
+.stage { flex: 1; min-height: 0; display: grid; place-items: center; }
+canvas { display: block; border-radius: 22px; box-shadow: 0 0 0 6px #5e3a24, 0 10px 0 6px #4b2d1b, 0 18px 30px rgba(60,40,20,.25); touch-action: none; cursor: pointer; }
+.foot { text-align: center; font-weight: 800; font-size: 1rem; color: var(--soil-dark); min-height: 1.4em; }
+.foot b { font-family: var(--display); font-size: 1.2rem; }
+
+.overlay { position: fixed; inset: 0; background: rgba(59,42,30,.45); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.card {
+  background: var(--cream); border-radius: 28px; padding: 24px 22px; width: min(420px, 100%);
+  box-sizing: border-box; text-align: center; box-shadow: 0 8px 0 var(--soil-dark);
+  max-height: calc(100% - 24px); overflow: auto;
+  animation: pop .35s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes pop { from { transform: scale(.7); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.card h2 { font-family: var(--display); font-weight: 900; font-size: 2rem; margin: 0 0 6px; text-wrap: balance; color: var(--soil-dark); }
+.card p { margin: 0 0 16px; font-size: 1.05rem; }
+.card .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn.big { font-size: 1.15rem; padding: 14px 22px; }
+.btn.go { background: #ff7aa8; color: #fff; box-shadow: 0 4px 0 #c94a77; }
+.stars { display: flex; justify-content: center; gap: 6px; margin: 4px 0 14px; }
+.stars svg { width: 54px; height: 54px; }
+.stars .s { animation: pop .4s backwards cubic-bezier(.2,1.6,.4,1); }
+.grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 8px 0 16px; }
+.lv {
+  aspect-ratio: 1; max-width: 100%; border: 0; border-radius: 16px; cursor: pointer;
+  background: #ffe7b8; color: var(--ink); font: 900 1.25rem/1 var(--display);
+  box-shadow: 0 3px 0 #d9a85a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.lv small { font: 800 .62rem/1 var(--body); color: #c98a10; letter-spacing: .05em; min-height: .7rem; }
+.lv.cur { background: #ff7aa8; color: #fff; box-shadow: 0 3px 0 #c94a77; }
+.lv.cur small { color: #fff; }
+.lv:disabled { background: #e6dccb; color: #b3a48e; box-shadow: none; cursor: default; }
+.lv:focus-visible { outline: 3px solid var(--soil-dark); outline-offset: 2px; }
+@media (max-width: 420px) { .brand { font-size: 1.25rem } .hearts svg { width: 26px; height: 26px } }
+@media (prefers-reduced-motion: reduce) { .card, .stars .s { animation: none } }
+</style>
+
+<div class="app">
+  <div class="bar">
+    <div class="brand">Wiggle <span>Out</span></div>
+    <div class="tools">
+      <button class="btn" id="hintBtn" aria-label="Show a hint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Hint
+      </button>
+      <button class="btn icon" id="restartBtn" aria-label="Restart level">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      </button>
+      <button class="btn icon" id="soundBtn" aria-label="Sound on or off">
+        <svg id="soundIco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
+    </div>
+  </div>
+  <div class="hud">
+    <button class="btn level-btn" id="levelBtn" aria-label="Choose a level">Level 1 ▾</button>
+    <div class="hearts" id="hearts" aria-label="Hearts left"></div>
+  </div>
+  <div class="stage" id="stage"><canvas id="cv" aria-label="Worm puzzle board. Tap a worm to send it out."></canvas></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="overlay" id="ov" hidden><div class="card" id="ovCard"></div></div>
+
+<script>
+(() => {
+const TOTAL = 30;
+const COLORS = [
+  { c: "#ff8fb8", d: "#c9507f", l: "#ffd0e2" }, // pink
+  { c: "#ffd64f", d: "#c49a12", l: "#fff1b0" }, // lemon
+  { c: "#b69cf0", d: "#7c5bc4", l: "#e2d6ff" }, // lilac
+  { c: "#6fd3c3", d: "#2f9a8a", l: "#c6f2ea" }, // mint
+  { c: "#ff9e6b", d: "#c9632e", l: "#ffd6bf" }, // coral
+  { c: "#7cc8f5", d: "#3a8cc0", l: "#cbeaff" }, // sky
+];
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+const HEARTS = 3;
+
+/* ---------- storage ---------- */
+const KEY = "wiggle-out-v1";
+let save = { unlocked: 1, stars: {}, sound: true };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} }
+
+/* ---------- level generator (always solvable) ---------- */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function genLevel(lv) {
+  const N = Math.min(4 + Math.floor((lv - 1) / 3), 9);
+  const maxLen = Math.min(2 + Math.floor(lv / 4), 7);
+  const R = rng(lv * 9973 + 17);
+  const occ = new Array(N * N).fill(-1);
+  const worms = [];
+  const target = Math.floor(N * N * Math.min(0.8 + lv * 0.005, 0.93));
+  let filled = 0;
+  for (let a = 0; a < 8000 && filled < target; a++) {
+    const hx = Math.floor(R() * N), hy = Math.floor(R() * N);
+    if (occ[hy * N + hx] >= 0) continue;
+    const d = DIRS[Math.floor(R() * 4)];
+    const ray = new Set(); let ok = true;
+    for (let x = hx + d[0], y = hy + d[1]; x >= 0 && y >= 0 && x < N && y < N; x += d[0], y += d[1]) {
+      if (occ[y * N + x] >= 0) { ok = false; break; }
+      ray.add(y * N + x);
+    }
+    if (!ok) continue;
+    const L = 2 + Math.floor(R() * (maxLen - 1));
+    const path = [[hx, hy]], used = new Set([hy * N + hx]);
+    let cx = hx, cy = hy, pd = [-d[0], -d[1]];
+    while (path.length < L) {
+      const opts = [];
+      for (const q of DIRS) {
+        const nx = cx + q[0], ny = cy + q[1];
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+        const k = ny * N + nx;
+        if (occ[k] >= 0 || used.has(k) || ray.has(k)) continue;
+        const w = (q[0] === pd[0] && q[1] === pd[1]) ? 3 : 1;
+        for (let i = 0; i < w; i++) opts.push(q);
+      }
+      if (!opts.length) break;
+      const q = opts[Math.floor(R() * opts.length)];
+      cx += q[0]; cy += q[1]; pd = q; path.push([cx, cy]); used.add(cy * N + cx);
+    }
+    if (path.length < 2) continue;
+    path.reverse(); // tail → head
+    const id = worms.length;
+    worms.push({ id, cells: path, dir: d });
+    for (const [px, py] of path) occ[py * N + px] = id;
+    filled += path.length;
+  }
+  // colour so touching worms differ
+  for (const w of worms) {
+    const near = new Set();
+    for (const [x, y] of w.cells) for (const q of DIRS) {
+      const nx = x + q[0], ny = y + q[1];
+      if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const o = occ[ny * N + nx];
+      if (o >= 0 && o !== w.id && worms[o].color != null) near.add(worms[o].color);
+    }
+    let c = (w.id * 5 + lv) % COLORS.length;
+    for (let i = 0; i < COLORS.length && near.has(c); i++) c = (c + 1) % COLORS.length;
+    w.color = c;
+  }
+  return { N, worms };
+}
+
+/* ---------- game state ---------- */
+let level = Math.min(save.unlocked, TOTAL);
+let G = null; // {N, worms, occ, hearts, mistakes, done}
+const particles = [];
+
+function startLevel(lv) {
+  level = lv;
+  const { N, worms } = genLevel(lv);
+  const occ = new Array(N * N).fill(-1);
+  for (const w of worms) {
+    w.alive = true; w.s = 0; w.anim = null; w.shake = 0; w.glow = 0;
+    w.blink = 2 + Math.random() * 4; w.phase = Math.random() * 6;
+    for (const [x, y] of w.cells) occ[y * N + x] = w.id;
+  }
+  G = { N, worms, occ, hearts: HEARTS, mistakes: 0, done: false };
+  particles.length = 0;
+  hideOverlay();
+  renderHud();
+  resize();
+}
+
+function rayCheck(w) {
+  const { N, occ } = G; const h = w.cells[w.cells.length - 1];
+  let dist = 0;
+  for (let x = h[0] + w.dir[0], y = h[1] + w.dir[1]; x >= 0 && y >= 0 && x < N && y < N; x += w.dir[0], y += w.dir[1]) {
+    const o = occ[y * N + x];
+    if (o >= 0 && o !== w.id) return { clear: false, dist, blocker: G.worms[o] };
+    dist++;
+  }
+  return { clear: true, dist };
+}
+
+function tapWorm(w) {
+  if (!w.alive || w.anim || G.done) return;
+  const r = rayCheck(w);
+  if (r.clear) {
+    for (const [x, y] of w.cells) G.occ[y * G.N + x] = -1;
+    w.anim = { type: "exit", v: 6, end: r.dist + w.cells.length + 1, edge: r.dist + 0.5, popped: false };
+    sfx("pop");
+  } else {
+    w.anim = { type: "bump", t: 0, dur: 0.38, peak: r.dist + 0.32 };
+    r.blocker.shake = 0.35;
+    G.hearts--; G.mistakes++;
+    sfx("boing");
+    renderHud();
+  }
+}
+
+/* ---------- canvas ---------- */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d"), stage = document.getElementById("stage");
+let size = 300, cs = 30, dpr = 1;
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  size = Math.max(160, Math.floor(Math.min(w - 16, h - 24, 620)));
+  dpr = Math.min(window.devicePixelRatio || 1, 3);
+  cv.style.width = size + "px"; cv.style.height = size + "px";
+  cv.width = Math.round(size * dpr); cv.height = Math.round(size * dpr);
+  if (G) cs = size / G.N;
+}
+new ResizeObserver(resize).observe(stage);
+
+function wormPoint(w, u) {
+  const P = w.cells, n = P.length;
+  let x, y;
+  if (u <= n - 1) {
+    const i = Math.max(0, Math.floor(u)), f = Math.max(0, u - i);
+    const a = P[i], b = P[Math.min(i + 1, n - 1)];
+    x = a[0] + (b[0] - a[0]) * f; y = a[1] + (b[1] - a[1]) * f;
+  } else {
+    const k = u - (n - 1), h = P[n - 1];
+    x = h[0] + w.dir[0] * k; y = h[1] + w.dir[1] * k;
+  }
+  return [(x + 0.5) * cs, (y + 0.5) * cs];
+}
+
+function drawBoard() {
+  const N = G.N;
+  ctx.fillStyle = "#8a5a3c"; ctx.fillRect(0, 0, size, size);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    if ((x + y) % 2) { ctx.fillStyle = "rgba(0,0,0,.06)"; ctx.fillRect(x * cs, y * cs, cs, cs); }
+  }
+  ctx.fillStyle = "rgba(60,35,20,.35)";
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    ctx.beginPath(); ctx.arc((x + 0.5) * cs, (y + 0.5) * cs, cs * 0.05, 0, 7); ctx.fill();
+  }
+}
+
+function drawWorm(w, time) {
+  const n = w.cells.length, col = COLORS[w.color];
+  const s = w.s, step = 0.2;
+  ctx.save();
+  if (w.shake > 0) ctx.translate(Math.sin(time * 70) * cs * 0.08 * (w.shake / 0.35), 0);
+  const pts = [];
+  for (let u = s; u <= s + n - 1 + 1e-6; u += step) pts.push(wormPoint(w, u));
+  pts.push(wormPoint(w, s + n - 1));
+  const line = (width, color) => {
+    ctx.lineWidth = width; ctx.strokeStyle = color; ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+  };
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (w.glow > 0) { ctx.shadowColor = "#fff6a0"; ctx.shadowBlur = cs * 0.6 * (0.6 + 0.4 * Math.sin(time * 10)); }
+  line(cs * 0.68, col.d);
+  ctx.shadowBlur = 0;
+  line(cs * 0.54, col.c);
+  // belly rings
+  ctx.strokeStyle = col.d; ctx.globalAlpha = 0.35; ctx.lineWidth = Math.max(1.5, cs * 0.05);
+  for (let k = 0; k < n - 1; k++) {
+    const u = s + k + 0.5, a = wormPoint(w, u - 0.05), b = wormPoint(w, u + 0.05);
+    const tx = b[0] - a[0], ty = b[1] - a[1], L = Math.hypot(tx, ty) || 1, nx = -ty / L, ny = tx / L, c = wormPoint(w, u);
+    ctx.beginPath(); ctx.moveTo(c[0] - nx * cs * 0.2, c[1] - ny * cs * 0.2); ctx.lineTo(c[0] + nx * cs * 0.2, c[1] + ny * cs * 0.2); ctx.stroke();
+  }
+  ctx.globalAlpha = 0.7;
+  ctx.save(); ctx.translate(-cs * 0.06, -cs * 0.08); line(cs * 0.12, col.l); ctx.restore();
+  ctx.globalAlpha = 1;
+  // head
+  const [hx, hy] = wormPoint(w, s + n - 1), [dx, dy] = w.dir, px = -dy, py = dx;
+  const breathe = 1 + Math.sin(time * 3 + w.phase) * 0.03;
+  const R = cs * 0.37 * breathe;
+  ctx.fillStyle = col.d; ctx.beginPath(); ctx.arc(hx, hy, R + cs * 0.06, 0, 7); ctx.fill();
+  ctx.fillStyle = col.c; ctx.beginPath(); ctx.arc(hx, hy, R, 0, 7); ctx.fill();
+  // cheeks
+  ctx.fillStyle = "rgba(255,90,120,.35)";
+  for (const sgn of [-1, 1]) { ctx.beginPath(); ctx.arc(hx - dx * cs * 0.05 + px * sgn * cs * 0.24, hy - dy * cs * 0.05 + py * sgn * cs * 0.24, cs * 0.07, 0, 7); ctx.fill(); }
+  // eyes
+  const blinking = (w.blink % 4) < 0.12;
+  for (const sgn of [-1, 1]) {
+    const ex = hx + dx * cs * 0.12 + px * sgn * cs * 0.14, ey = hy + dy * cs * 0.12 + py * sgn * cs * 0.14;
+    ctx.fillStyle = "#fff"; ctx.beginPath();
+    if (blinking) ctx.ellipse(ex, ey, cs * 0.11, cs * 0.025, Math.atan2(py, px), 0, 7);
+    else ctx.arc(ex, ey, cs * 0.11, 0, 7);
+    ctx.fill();
+    if (!blinking) {
+      ctx.fillStyle = "#2b1d14"; ctx.beginPath(); ctx.arc(ex + dx * cs * 0.04, ey + dy * cs * 0.04, cs * 0.06, 0, 7); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex + dx * cs * 0.02 - cs * 0.02, ey + dy * cs * 0.02 - cs * 0.025, cs * 0.022, 0, 7); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+let last = performance.now(), loseTimer = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const time = now / 1000;
+  if (G) {
+    let anyAnim = false;
+    for (const w of G.worms) {
+      if (!w.alive) continue;
+      w.blink += dt; if (w.shake > 0) w.shake = Math.max(0, w.shake - dt); if (w.glow > 0) w.glow = Math.max(0, w.glow - dt);
+      const a = w.anim;
+      if (a) {
+        anyAnim = true;
+        if (a.type === "exit") {
+          a.v = Math.min(a.v + 40 * dt, 22); w.s += a.v * dt;
+          if (!a.popped && w.s >= a.edge) { a.popped = true; burst(wormPoint(w, w.cells.length - 1 + a.edge), COLORS[w.color].c); }
+          if (w.s >= a.end) { w.alive = false; w.anim = null; renderHud(); checkWin(); }
+        } else {
+          a.t += dt; w.s = a.peak * Math.sin(Math.PI * Math.min(1, a.t / a.dur));
+          if (a.t >= a.dur) { w.s = 0; w.anim = null; }
+        }
+      }
+    }
+    if (G.hearts <= 0 && !G.done && !anyAnim) { G.done = true; setTimeout(showLose, 250); }
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]; p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt;
+      if (p.t <= 0) particles.splice(i, 1);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+    drawBoard();
+    for (const w of G.worms) if (w.alive && !w.anim) drawWorm(w, time);
+    for (const w of G.worms) if (w.alive && w.anim) drawWorm(w, time);
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.t / p.life); ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  requestAnimationFrame(frame);
+}
+function burst([x, y], c) {
+  x = Math.max(4, Math.min(size - 4, x)); y = Math.max(4, Math.min(size - 4, y));
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 80 + Math.random() * 160;
+    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, r: 2 + Math.random() * 4, t: .7, life: .7, c: i % 3 ? c : "#fff6a0" });
+  }
+}
+
+cv.addEventListener("pointerdown", e => {
+  if (!G || G.done) return;
+  unlockAudio();
+  const r = cv.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / r.width * G.N), y = Math.floor((e.clientY - r.top) / r.height * G.N);
+  if (x < 0 || y < 0 || x >= G.N || y >= G.N) return;
+  const id = G.occ[y * G.N + x];
+  if (id >= 0) tapWorm(G.worms[id]);
+});
+
+/* ---------- HUD & overlays ---------- */
+const heartSvg = '<svg viewBox="0 0 24 24"><path fill="#ef4a5f" stroke="#a8283a" stroke-width="1.6" d="M12 21s-7.5-4.6-9.5-9.3C1.1 8.3 3.2 4.5 6.9 4.5c2.1 0 3.6 1.2 5.1 3 1.5-1.8 3-3 5.1-3 3.7 0 5.8 3.8 4.4 7.2C19.5 16.4 12 21 12 21z"/><circle cx="8" cy="9" r="1.6" fill="#fff" opacity=".7"/></svg>';
+const starSvg = on => `<svg viewBox="0 0 24 24"><path fill="${on ? "#ffc93c" : "#e6dccb"}" stroke="${on ? "#c78b00" : "#c9bba4"}" stroke-width="1.5" stroke-linejoin="round" d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>`;
+function renderHud() {
+  document.getElementById("levelBtn").textContent = `Level ${level} ▾`;
+  const h = document.getElementById("hearts"); h.innerHTML = "";
+  for (let i = 0; i < HEARTS; i++) { const d = document.createElement("span"); d.innerHTML = heartSvg; if (i >= G.hearts) d.firstChild.classList.add("lost"); h.appendChild(d); }
+  const left = G.worms.filter(w => w.alive && !(w.anim && w.anim.type === "exit")).length;
+  document.getElementById("foot").innerHTML = left ? `<b>${left}</b> ${left === 1 ? "worm" : "worms"} left to wiggle out` : "All free!";
+}
+const ov = document.getElementById("ov"), ovCard = document.getElementById("ovCard");
+function showOverlay(html) { ovCard.innerHTML = html; ov.hidden = false; }
+function hideOverlay() { ov.hidden = true; }
+
+function checkWin() {
+  if (G.done || G.worms.some(w => w.alive)) return;
+  G.done = true;
+  const stars = G.mistakes === 0 ? 3 : G.mistakes === 1 ? 2 : 1;
+  save.stars[level] = Math.max(save.stars[level] || 0, stars);
+  if (level < TOTAL) save.unlocked = Math.max(save.unlocked, level + 1);
+  persist();
+  sfx("win");
+  const msgs = ["Super wiggly!", "Worm hero!", "Hooray!", "You did it!", "Wonderful!"];
+  setTimeout(() => {
+    const last = level >= TOTAL;
+    showOverlay(`
+      <h2>${last ? "Every worm is free!" : msgs[level % msgs.length]}</h2>
+      <div class="stars">${[0,1,2].map(i => `<span class="s" style="animation-delay:${i * .15}s">${starSvg(i < stars)}</span>`).join("")}</div>
+      <p>${stars === 3 ? "No bumps at all. Perfect!" : "Try for 3 stars with no bumps."}</p>
+      <div class="row">
+        <button class="btn big" id="ovAgain">Play again</button>
+        ${last ? `<button class="btn big go" id="ovMap">All levels</button>` : `<button class="btn big go" id="ovNext">Next level</button>`}
+      </div>`);
+    const nx = document.getElementById("ovNext"); if (nx) nx.onclick = () => startLevel(level + 1);
+    const mp = document.getElementById("ovMap"); if (mp) mp.onclick = showMap;
+    document.getElementById("ovAgain").onclick = () => startLevel(level);
+  }, 450);
+}
+function showLose() {
+  showOverlay(`
+    <h2>Oh no, a worm jam!</h2>
+    <p>Look where each worm's face points. A worm can only wiggle out if nothing is in its way.</p>
+    <div class="row"><button class="btn big go" id="ovRetry">Try again</button></div>`);
+  document.getElementById("ovRetry").onclick = () => startLevel(level);
+}
+function showMap() {
+  let cells = "";
+  for (let i = 1; i <= TOTAL; i++) {
+    const st = save.stars[i] || 0, locked = i > save.unlocked;
+    cells += `<button class="lv${i === level ? " cur" : ""}" data-lv="${i}" ${locked ? "disabled" : ""}>${i}<small>${st ? "★".repeat(st) : ""}</small></button>`;
+  }
+  showOverlay(`<h2>Pick a level</h2><div class="grid">${cells}</div><div class="row"><button class="btn big" id="ovClose">Back</button></div>`);
+  ovCard.querySelectorAll(".lv").forEach(b => b.onclick = () => startLevel(+b.dataset.lv));
+  document.getElementById("ovClose").onclick = () => { if (G && G.done) startLevel(level); else hideOverlay(); };
+}
+
+document.getElementById("levelBtn").onclick = showMap;
+document.getElementById("restartBtn").onclick = () => startLevel(level);
+document.getElementById("hintBtn").onclick = () => {
+  if (!G || G.done) return;
+  const free = G.worms.find(w => w.alive && !w.anim && rayCheck(w).clear);
+  if (free) free.glow = 1.6;
+};
+
+/* ---------- sound ---------- */
+let AC = null;
+function unlockAudio() { if (!AC && save.sound) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === "suspended") AC.resume(); }
+function tone(type, f1, f2, dur, vol, delay = 0) {
+  if (!AC || !save.sound) return;
+  const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + .02);
+}
+function sfx(k) {
+  if (k === "pop") { tone("sine", 420, 980, .14, .25); }
+  if (k === "boing") { tone("triangle", 260, 110, .3, .3); tone("sine", 140, 90, .25, .2, .05); }
+  if (k === "win") { [523, 659, 784, 1047].forEach((f, i) => tone("triangle", f, f * 1.01, .22, .2, i * .1)); }
+}
+function renderSound() {
+  document.getElementById("soundIco").innerHTML = save.sound
+    ? '<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>'
+    : '<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M16 9l5 6M21 9l-5 6"/>';
+}
+document.getElementById("soundBtn").onclick = () => { save.sound = !save.sound; persist(); renderSound(); if (save.sound) unlockAudio(); };
+renderSound();
+
+startLevel(level);
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>
