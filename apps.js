@@ -46,6 +46,12 @@ const APPS = [
     icon: "🎃",
     color: "#2a1840",
   },
+  {
+    name: "Willamette or Bust",
+    link: "apps/willamette-or-bust/index.html",
+    icon: "🐂",
+    color: "#8a5a2b",
+  },
 
   // {
   //   name: "My Next App",

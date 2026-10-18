@@ -1,0 +1,1212 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Willamette or Bust</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Courier+Prime:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Layout: one-screen field ledger. Scene band on top, status and journal side by side, action rail at the foot.
+   Look: a cyanotype print, the photographic process of the 1840s. Everything is a pale exposure on Prussian blue; ochre only for warnings and the wagon's place on the trail. */
+:root{
+  --ground:#0d2a47; --ground-2:#123659; --ground-3:#1a4671; --veil:rgba(6,20,36,.82);
+  --print:#e6eef5; --print-dim:#a6bccf; --print-faint:#4f7395;
+  --ochre:#e4b462; --wound:#f3957f; --mend:#a2dbb9;
+  --f-display:'Alfa Slab One','Rockwell','Roboto Slab',Georgia,serif;
+  --f-body:'IM Fell English',Georgia,'Times New Roman',serif;
+  --f-ledger:'Courier Prime','Courier New',ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--print);font:17px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;gap:10px;max-width:1200px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.bar{display:flex;align-items:baseline;gap:8px 18px;flex-wrap:wrap;flex:none}
+.brand{font-family:var(--f-display);font-size:22px;letter-spacing:.01em;line-height:1}
+.brand em{font-style:normal;color:var(--ochre)}
+.meta{margin-left:auto;display:flex;gap:6px 16px;flex-wrap:wrap;font-family:var(--f-ledger);font-size:14px;color:var(--print-dim);font-variant-numeric:tabular-nums}
+.meta b{color:var(--print);font-weight:700}
+.scene{position:relative;flex:none;height:clamp(140px,27vh,250px);border:1px solid var(--print-faint);overflow:hidden;background:var(--ground-2)}
+.scene canvas{display:block;width:100%;height:100%}
+.scene .cap{position:absolute;left:12px;bottom:8px;font-family:var(--f-ledger);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--print);opacity:.85;text-shadow:0 1px 0 var(--ground)}
+.trail{flex:none;display:grid;gap:4px}
+.trail canvas{display:block;width:100%;height:30px}
+.trail .next{display:flex;justify-content:space-between;gap:12px;font-family:var(--f-ledger);font-size:13px;color:var(--print-dim);font-variant-numeric:tabular-nums}
+.trail .next b{color:var(--print)}
+.cols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px}
+.panel{min-height:0;overflow:auto;padding-right:4px;scrollbar-color:var(--print-faint) transparent}
+h2{font-family:var(--f-ledger);font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--print-dim);margin:0 0 8px;padding-bottom:5px;border-bottom:1px solid var(--print-faint)}
+.panel section+section{margin-top:16px}
+dl.ledger{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0;font-size:16px}
+dl.ledger dt{font-family:var(--f-ledger);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--print-dim);padding-top:3px}
+dl.ledger dd{margin:0;font-variant-numeric:tabular-nums}
+.warn{color:var(--ochre)} .bad{color:var(--wound)} .good{color:var(--mend)}
+.meter{height:5px;background:var(--ground-3);margin-top:4px;position:relative}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--print)}
+.party{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.party li{display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:baseline}
+.party .nm{font-size:18px}
+.party .nm .lead{font-family:var(--f-ledger);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ochre);margin-left:6px}
+.party .tr{grid-column:1/-1;font-style:italic;font-size:14px;color:var(--print-dim)}
+.party .hp{font-family:var(--f-ledger);font-size:13px;font-variant-numeric:tabular-nums}
+.party .meter{grid-column:1/-1}
+.party li.dead{opacity:.5}
+.party li.dead .nm{text-decoration:line-through;text-decoration-thickness:1px}
+.chip{font-family:var(--f-ledger);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;padding:1px 5px;margin-left:6px;white-space:nowrap}
+.stores{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px 14px;font-family:var(--f-ledger);font-size:13px;font-variant-numeric:tabular-nums}
+.stores span{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--print-faint);padding-block:2px}
+.stores span b{color:var(--print)}
+.stores span{color:var(--print-dim)}
+#log{list-style:none;margin:0;padding:0}
+#log li{display:grid;grid-template-columns:5.6em 1fr;gap:10px;padding-block:6px;border-bottom:1px dotted var(--print-faint)}
+#log .d{font-family:var(--f-ledger);font-size:12px;color:var(--print-dim);padding-top:3px;font-variant-numeric:tabular-nums}
+#log .t{font-size:17px;line-height:1.4}
+#log li.death .t{color:var(--wound)} #log li.death .t::before{content:"† ";color:var(--wound)}
+#log li.land .t{font-style:italic;color:var(--print)}
+#log li.good .t{color:var(--mend)}
+#log li.bad .t{color:var(--ochre)}
+.actions{flex:none;display:flex;flex-wrap:wrap;gap:8px;padding-top:2px}
+button{font-family:var(--f-ledger);font-weight:700;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--print);background:transparent;border:1px solid var(--print-dim);min-height:44px;padding:9px 14px;cursor:pointer;border-radius:0}
+button:hover:not([disabled]){background:var(--ground-2)}
+button:focus-visible{outline:2px solid var(--ochre);outline-offset:2px}
+button[disabled]{opacity:.38;cursor:not-allowed}
+button.go{background:var(--print);color:var(--ground);border-color:var(--print);min-width:12em}
+button.go:hover:not([disabled]){background:var(--print-dim)}
+button.alert{border-color:var(--ochre);color:var(--ochre)}
+/* modal */
+.modal{position:fixed;inset:0;background:var(--veil);display:grid;place-items:center;z-index:20;padding:calc(12px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:min(660px,100%);max-height:100%;overflow:auto;background:var(--ground-2);border:1px solid var(--print-faint);padding:22px 24px 24px}
+.sheet h3{font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.1;margin:0 0 4px;text-wrap:balance}
+.sheet .eyebrow{font-family:var(--f-ledger);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--print-dim);margin-bottom:8px}
+.sheet p{margin:10px 0;max-width:62ch}
+.sheet p.facts{font-family:var(--f-ledger);font-size:14px;color:var(--print-dim);font-variant-numeric:tabular-nums}
+.choices{display:grid;gap:8px;margin-top:16px}
+.choice{display:block;width:100%;text-align:left;font-family:var(--f-body);font-weight:400;font-size:18px;letter-spacing:0;text-transform:none;padding:11px 14px}
+.choice small{display:block;font-family:var(--f-ledger);font-size:12px;letter-spacing:.04em;color:var(--print-dim);margin-top:2px}
+.choice.primary{background:var(--print);color:var(--ground);border-color:var(--print)}
+.choice.primary small{color:var(--ground-3)}
+.title-art{font-family:var(--f-display);font-size:clamp(44px,11vw,82px);line-height:.9;letter-spacing:-.01em;margin:6px 0 12px}
+.title-art em{font-style:normal;color:var(--ochre);display:block;font-size:.5em;letter-spacing:.06em;margin-top:6px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+.namegrid{display:grid;gap:8px}
+.namerow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:10px;align-items:center}
+.namerow input{width:100%;font:18px var(--f-body);color:var(--print);background:var(--ground);border:1px solid var(--print-faint);padding:8px 10px;min-height:44px}
+.namerow input:focus{outline:2px solid var(--ochre);outline-offset:1px}
+.namerow .tr{font-size:14px;font-style:italic;color:var(--print-dim)}
+.namerow .tr b{font-style:normal;color:var(--print);font-weight:400}
+.store{display:grid;gap:0;margin-top:10px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 12px;align-items:center;padding-block:8px;border-bottom:1px dotted var(--print-faint)}
+.srow .nm{font-size:17px}
+.srow .nm small{display:block;font-family:var(--f-ledger);font-size:12px;color:var(--print-dim);font-variant-numeric:tabular-nums}
+.qty{display:flex;align-items:center;gap:6px}
+.qty button{min-width:40px;min-height:40px;padding:0;font-size:18px}
+.qty output{min-width:2.4em;text-align:center;font-family:var(--f-ledger);font-variant-numeric:tabular-nums}
+.srow .line{font-family:var(--f-ledger);font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+.totals{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;font-family:var(--f-ledger);font-variant-numeric:tabular-nums}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.history{font-family:var(--f-ledger);font-size:13px;color:var(--print-dim);margin-top:14px}
+.history div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted var(--print-faint);padding-block:3px}
+.graves{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}
+.graves li{border-left:2px solid var(--wound);padding-left:10px;font-size:16px}
+.graves small{display:block;font-family:var(--f-ledger);font-size:12px;color:var(--print-dim)}
+.score{font-family:var(--f-display);font-size:48px;line-height:1;color:var(--ochre);margin:6px 0}
+/* hunt */
+#hunt{position:fixed;inset:0;z-index:30;background:var(--ground);display:flex;flex-direction:column}
+#hunt .hud{display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap;padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));font-family:var(--f-ledger);font-size:14px;font-variant-numeric:tabular-nums;color:var(--print-dim)}
+#hunt .hud b{color:var(--print);font-size:18px}
+#hunt .hud .sp{margin-left:auto}
+#hunt canvas{flex:1;display:block;width:100%;min-height:0;touch-action:none;cursor:crosshair}
+#hunt .tip{position:absolute;left:0;right:0;top:40%;text-align:center;font-family:var(--f-display);font-size:clamp(22px,5vw,36px);pointer-events:none;color:var(--print);text-shadow:0 2px 0 var(--ground)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--print);color:var(--ground);font-family:var(--f-ledger);font-size:14px;padding:9px 14px;z-index:40;max-width:calc(100% - 32px)}
+@media (max-width:760px){
+  body{overflow:auto}
+  #app{height:auto;min-height:100%}
+  .cols{display:flex;flex-direction:column;gap:16px}
+  .panel{overflow:visible;padding-right:0}
+  .journal{max-height:55vh;overflow:auto}
+  .actions{position:sticky;bottom:0;background:var(--ground);padding-block:8px calc(8px + env(safe-area-inset-bottom,0px));margin-inline:-4px;padding-inline:4px;z-index:5}
+  .actions button{flex:1 1 auto}
+  .brand{font-size:19px}
+  .sheet{padding:18px 16px 20px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+
+<div id="app">
+  <header class="bar">
+    <div class="brand">Willamette <em>or</em> Bust</div>
+    <div class="meta" id="meta"></div>
+  </header>
+  <div class="scene"><canvas id="scene" aria-label="The wagon on the trail"></canvas><div class="cap" id="cap"></div></div>
+  <div class="trail"><canvas id="strip" aria-hidden="true"></canvas><div class="next" id="next"></div></div>
+  <main class="cols">
+    <div class="panel" id="status"></div>
+    <div class="panel journal"><h2>Journal</h2><ol id="log"></ol></div>
+  </main>
+  <nav class="actions" id="actions"></nav>
+</div>
+
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+
+<div id="hunt" hidden>
+  <div class="hud">
+    <span>Time <b id="hT">30</b></span>
+    <span>Bullets <b id="hB">0</b></span>
+    <span>Shot <b id="hM">0</b> lbs</span>
+    <span class="sp"></span>
+    <button id="hDone">Back to the wagon</button>
+  </div>
+  <canvas id="huntc"></canvas>
+  <div class="tip" id="hTip">Tap an animal to shoot</div>
+</div>
+
+<script>
+/* ============ data ============ */
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MON3=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const TEMP=[22,28,40,52,62,72,80,78,68,55,40,28];
+const TER={plains:{f:1,n:'open prairie'},hills:{f:.9,n:'broken hills'},mountains:{f:.8,n:'mountains'},desert:{f:.9,n:'sagebrush plain'},valley:{f:1,n:'river valley'}};
+const PACE={
+  steady:{n:'Steady',mi:17,hp:0,ox:-.25,mor:0,d:'About eight hours on the road. Sustainable.'},
+  strenuous:{n:'Strenuous',mi:21,hp:-2,ox:-.8,mor:-.4,d:'Dawn to dusk. Everyone is tired, nobody is dying of it yet.'},
+  grueling:{n:'Grueling',mi:26,hp:-5,ox:-1.6,mor:-1.5,d:'Into the heat and past dark. Things break, people included.'}
+};
+const RATIONS={
+  filling:{n:'Filling',lbs:3,hp:1,mor:.4,d:'Three pounds a person a day.'},
+  meager:{n:'Meager',lbs:2,hp:-1,mor:-.4,d:'Two pounds. Hungry, but upright.'},
+  bare:{n:'Bare bones',lbs:1,hp:-3,mor:-1.5,d:'One pound. Survivable for a short while.'}
+};
+const PROF={
+  banker:{n:'Banker from Boston',money:1600,mult:1,d:'Deep pockets. No useful skills whatsoever.'},
+  doctor:{n:'Doctor from Cincinnati',money:1200,mult:1.5,d:'Treats illness far better. Medicine goes further.'},
+  carpenter:{n:'Carpenter from Ohio',money:800,mult:2,d:'Often mends a broken wagon without a spare part.'},
+  farmer:{n:'Farmer from Illinois',money:450,mult:3,d:'Oxen tire more slowly under a farmer’s care.'}
+};
+const TRAITS=[
+  {k:'dragoon',n:'Former dragoon',d:'a steady hand on the hunt'},
+  {k:'hardy',n:'Hardy constitution',d:'shrugs off illness'},
+  {k:'sickly',n:'Sickly since childhood',d:'catches whatever is going'},
+  {k:'optimist',n:'Incurable optimist',d:'lifts the company’s spirits'},
+  {k:'complainer',n:'Complains at length',d:'wears the company down'},
+  {k:'oxen',n:'Good with oxen',d:'the team tires more slowly'},
+  {k:'drink',n:'Takes a drink',d:'whiskey has a way of disappearing'},
+  {k:'fiddler',n:'Plays the fiddle',d:'rest days do more good'},
+  {k:'sabbath',n:'Keeps the Sabbath',d:'would rather not travel on Sundays'},
+  {k:'fingers',n:'Light-fingered',d:'uncommonly lucky at cards'}
+];
+const NAMES=['Hannah','Josiah','Margaret','Ezra','Clementine','Amos','Prudence','Silas','Lavinia','Thaddeus','Delia','Obadiah','Harriet','Elias','Temperance','Rufus'];
+const ITEMS=[
+  {k:'oxen',n:'Oxen',u:'per yoke of two',price:40,per:2,max:20},
+  {k:'food',n:'Flour, bacon, coffee',u:'per 100 lbs',price:20,per:100,max:3000},
+  {k:'clothes',n:'Clothing',u:'per set',price:10,per:1,max:60},
+  {k:'bullets',n:'Ammunition',u:'per box of 20',price:2,per:20,max:2000},
+  {k:'wheel',n:'Spare wheel',u:'each',price:10,per:1,max:3},
+  {k:'axle',n:'Spare axle',u:'each',price:10,per:1,max:3},
+  {k:'tongue',n:'Spare tongue',u:'each',price:10,per:1,max:3},
+  {k:'meds',n:'Medicine kit',u:'calomel, quinine, laudanum, lint',price:15,per:1,max:12},
+  {k:'whiskey',n:'Whiskey',u:'per bottle',price:2,per:1,max:20}
+];
+const DIS={
+  cholera:{n:'cholera',dmg:15,days:[2,4]},
+  dysentery:{n:'dysentery',dmg:7,days:[4,8]},
+  typhoid:{n:'typhoid fever',dmg:6,days:[8,13]},
+  measles:{n:'measles',dmg:5,days:[5,9]},
+  fever:{n:'mountain fever',dmg:6,days:[5,9]},
+  exhaustion:{n:'exhaustion',dmg:3,days:[3,6]},
+  snakebite:{n:'a rattlesnake bite',dmg:11,days:[2,4]},
+  arm:{n:'a broken arm',dmg:1.5,days:[12,20]},
+  scurvy:{n:'scurvy',dmg:3,days:[9,15]},
+  frost:{n:'frostbite',dmg:5,days:[4,8]}
+};
+const BASE=[
+  {id:'independence',n:'Independence, Missouri',t:'town',to:102,ter:'plains',price:1},
+  {id:'kansas',n:'Kansas River Crossing',t:'river',to:83,ter:'plains',river:{d:[2.4,4.6],w:[560,680],c:'moderate',ferry:5,wait:[0,2]}},
+  {id:'bigblue',n:'Big Blue River',t:'river',to:119,ter:'plains',river:{d:[1.4,3.6],w:[170,240],c:'gentle'}},
+  {id:'kearny',n:'Fort Kearny',t:'fort',to:250,ter:'plains',price:1.25},
+  {id:'chimney',n:'Chimney Rock',t:'mark',to:86,ter:'plains'},
+  {id:'laramie',n:'Fort Laramie',t:'fort',to:190,ter:'hills',price:1.5},
+  {id:'indrock',n:'Independence Rock',t:'mark',to:102,ter:'hills'},
+  {id:'southpass',n:'South Pass',t:'pass',to:57,ter:'mountains'}
+];
+const BRIDGER=[
+  {id:'green',n:'Green River',t:'river',to:68,ter:'mountains',river:{d:[3,6.5],w:[330,420],c:'swift',ferry:8,wait:[0,3]}},
+  {id:'bridger',n:'Fort Bridger',t:'fort',to:162,ter:'mountains',price:1.75}
+];
+const CUTOFF=[
+  {id:'greencut',n:'Green River Ferry',t:'river',to:143,ter:'mountains',river:{d:[3,6.5],w:[300,400],c:'swift',ferry:10,wait:[1,3]}}
+];
+const TAIL=[
+  {id:'soda',n:'Soda Springs',t:'mark',to:57,ter:'desert'},
+  {id:'hall',n:'Fort Hall',t:'fort',to:182,ter:'desert',price:2},
+  {id:'snake',n:'Snake River Crossing',t:'river',to:114,ter:'desert',river:{d:[3.5,7.5],w:[900,1100],c:'swift',guide:true}},
+  {id:'boise',n:'Fort Boise',t:'fort',to:160,ter:'hills',price:2.25},
+  {id:'blue',n:'Blue Mountains',t:'mark',to:125,ter:'mountains'},
+  {id:'dalles',n:'The Dalles',t:'dalles',to:100,ter:'mountains'},
+  {id:'willamette',n:'Willamette Valley',t:'end',to:0,ter:'valley'}
+];
+const BLURB={
+  independence:'The jumping-off town. Wagons, mules, outfitters and a good deal of advice, most of it for sale.',
+  kansas:'The first real river. A ferry runs here for a fee, and the current is stronger than it looks from the bank.',
+  bigblue:'A pleasant, wooded river. Usually fordable. Usually.',
+  kearny:'A new Army post on the Platte, built this very year to watch over the road. Sod walls, a few cannon, a sutler’s store.',
+  chimney:'A spire of clay and sandstone you can see for two days before you reach it. Every diarist in the company describes it, and none of them agree on what it looks like.',
+  laramie:'An adobe trading post of the American Fur Company. Lakota lodges stand outside the walls, and traders inside charge what the distance allows.',
+  indrock:'A granite dome the size of a cathedral, scratched and painted with the names of those who passed. The rule of thumb: reach it by the Fourth of July or meet the snows in the Blue Mountains.',
+  southpass:'A broad, gentle saddle over the Continental Divide. It looks like nothing much. From here on, the water runs to the Pacific.',
+  green:'Deep, cold and fast. Mountain men run ferries here at whatever price the day will bear.',
+  greencut:'The cutoff meets the Green at a ferry run by men who know you have no other choice.',
+  bridger:'Jim Bridger’s trading post: a few log buildings, a blacksmith, and strong opinions about routes.',
+  soda:'Springs that fizz like soda water. Emigrants mix the water with sugar and call it lemonade. One spring hisses and spouts like a steam engine.',
+  hall:'A Hudson’s Bay Company post. The people here may tell you that wagons cannot get through to Oregon. Several thousand already have.',
+  snake:'Three Island Crossing. Wide, deep and quick. Shoshone guides know the line between the islands.',
+  boise:'Another Hudson’s Bay post on the Snake, small, adobe, and courteous.',
+  blue:'Steep timbered ridges. Wagons are let down the worst slopes on ropes snubbed round trees.',
+  dalles:'The road runs out at the Columbia. From here, either the river by raft or Barlow’s toll road around the south shoulder of Mount Hood.',
+  willamette:'Green, wet and fertile. The end of the trail.'
+};
+const RUMORS=[
+  'A trapper says the Snake River crossing is safest with a Shoshone guide. He says it the way people say things they learned the hard way.',
+  'Cholera follows the crowded camps along the Platte. The old hands camp upstream of everyone else and boil what they drink.',
+  'The Blue Mountains turn early. Anyone still east of them in October should start praying in earnest.',
+  'An ox that is driven hard on short grass will keep walking right up until it lies down for good.',
+  'A man at the store is selling a remedy he swears by. He is also selling the bottles.',
+  'Barlow’s road costs five dollars a wagon and is worth every cent, according to Mr. Barlow.',
+  'The Sublette Cutoff saves days, but there’s no water for fifty miles. Fill every barrel you own.',
+  'Rest days are not wasted days. Ask anyone who didn’t take them.',
+  'A sergeant reckons a company on full rations walks faster than one on half. He has never been hungry enough to test it.',
+  'If you find a dresser by the trail, it is probably someone’s grandmother’s. There are a great many such dressers.'
+];
+const FAMILIES=['Pruitt','Halloway','Bascomb','Merriweather','Tolliver','Ashby','Crenshaw'];
+const STRANGERS=['a Mr. Pettibone of Kentucky','two brothers from Ohio','a quiet man with a mule','a widow driving her own team','a Methodist preacher','a family from Tennessee'];
+
+/* ============ helpers ============ */
+const $=s=>document.querySelector(s);
+const R=Math.random, ri=(a,b)=>Math.floor(a+R()*(b-a+1)), pick=a=>a[Math.floor(R()*a.length)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money=v=>'$'+(Math.round(v*100)/100).toFixed(2);
+function wpick(o){let t=0;for(const k in o)t+=Math.max(0,o[k]);let r=R()*t;for(const k in o){r-=Math.max(0,o[k]);if(r<=0)return k;}return Object.keys(o)[0];}
+const fmtDate=t=>{const d=new Date(t);return `${MON[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;};
+const shortDate=t=>{const d=new Date(t);return `${MON3[d.getUTCMonth()]} ${d.getUTCDate()}`;};
+const plural=(n,w,p)=>`${n} ${n===1?w:(p||w+'s')}`;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const KEEP={keep:true};
+
+let S=null, modalOpen=false, tickTimer=null;
+
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){return null;}}
+function save(){if(!S||S.phase!=='travel')return;const c=Object.assign({},S,{running:null});store('wob-save',JSON.stringify(c));}
+function pastRuns(){try{return JSON.parse(store('wob-history')||'[]')||[];}catch(e){return [];}}
+
+/* ============ state queries ============ */
+function nodes(){
+  const sp=Object.assign({},BASE[7]);
+  const cut=S&&S.route==='cutoff';
+  sp.to=cut?85:57; sp.ter=cut?'desert':'mountains';
+  return [...BASE.slice(0,7),sp,...(cut?CUTOFF:BRIDGER),...TAIL];
+}
+function cum(N){const a=[0];for(let i=1;i<N.length;i++)a.push(a[i-1]+N[i-1].to);return a;}
+const curNode=()=>nodes()[S.leg];
+const nextNode=()=>nodes()[S.leg+1]||null;
+const curTer=()=>S?curNode().ter:'plains';
+const month=()=>new Date(S.t).getUTCMonth();
+const living=()=>S.party.filter(p=>p.alive);
+const leader=()=>S.party.find(p=>p.alive&&p.lead)||living()[0];
+const hasTrait=k=>living().some(p=>p.trait===k);
+const traitHolder=k=>living().find(p=>p.trait===k);
+const atNode=()=>S.legMiles===0;
+function avgHealth(){const l=living();return l.length?l.reduce((s,p)=>s+p.health,0)/l.length:0;}
+function healthWord(h){return h>=75?'Good':h>=50?'Fair':h>=25?'Poor':'Very poor';}
+function oxWord(h){return h>=75?'Strong':h>=50?'Worn':h>=25?'Weak':'Failing';}
+function moraleWord(m){return m>=75?'High':m>=50?'Steady':m>=30?'Low':'Mutinous';}
+function trait(k){return TRAITS.find(t=>t.k===k);}
+function pickMember(f){const l=living().filter(f||(()=>true));return l.length?pick(l):null;}
+function oxFactor(){const o=S.sup.oxen;const b=o>=10?1.12:o>=8?1.08:o>=6?1:o>=4?.8:o>=2?.55:o>=1?.3:0;return b*(.6+.4*S.oxHealth/100);}
+function canTravel(){return S.phase==='travel'&&living().length&&S.sup.oxen>0&&!S.broken&&!S.blocked;}
+
+/* ============ log ============ */
+function log(t,k){S.log.unshift({d:shortDate(S.t),t,k:k||''});if(S.log.length>260)S.log.pop();return t;}
+
+/* ============ weather ============ */
+function rollWeather(){
+  const m=month(),ter=curTer();
+  let t=TEMP[m]+(ter==='mountains'?-12:0)+(ter==='desert'&&m>=5&&m<=8?8:0)+ri(-8,8);
+  const rainP=[.08,.1,.18,.22,.22,.16,.1,.1,.12,.15,.18,.12][m];
+  let p='fair';
+  if(R()<rainP)p=t<34?(R()<.35?'heavy snow':'snow'):(R()<.28?'heavy rain':'rain');
+  const f={fair:1,rain:.85,'heavy rain':.65,snow:.6,'heavy snow':.3}[p];
+  const label=t<20?'Very cold':t<40?'Cold':t<60?'Cool':t<75?'Warm':t<88?'Hot':'Very hot';
+  return {temp:t,p,f,label};
+}
+
+/* ============ illness & death ============ */
+function rollDisease(){
+  const m=month(),ter=curTer();
+  const w={dysentery:3,typhoid:1.4,measles:m<6?1:.3,exhaustion:S.pace==='grueling'?3:.5};
+  w.cholera=(ter==='plains'||ter==='hills')&&m>=4&&m<=7?2.4:.3;
+  if(ter==='mountains')w.fever=2;
+  if(S.rations==='bare')w.scurvy=1.6;
+  if(S.weather.temp<32)w.frost=1.6;
+  return wpick(w);
+}
+function sicken(p,k,why){
+  if(!p||!p.alive)return;
+  const D=DIS[k];p.ill={k,days:ri(D.days[0],D.days[1])};
+  log(why||`${p.name} has ${D.n}.`,'bad');
+}
+function die(p,cause){
+  if(!p.alive)return;
+  p.alive=false;p.health=0;p.cause=cause||(p.ill?DIS[p.ill.k].n:'exhaustion');p.ill=null;
+  p.where=S.legMiles===0?curNode().n:`mile ${S.miles}, past ${curNode().n}`;
+  p.date=fmtDate(S.t);
+  S.morale=clamp(S.morale-15,0,100);
+  log(`${p.name} died of ${p.cause}. Buried beside the trail ${S.legMiles===0?'at '+curNode().n:'near mile '+S.miles}.`,'death');
+  if(p.lead){p.lead=false;const n=living()[0];if(n){n.lead=true;log(`The ledger passes to ${n.name}.`,'land');}}
+  if(!living().length)endGame(false);
+}
+
+/* ============ the day ============ */
+function tick(mode,quiet){
+  if(S.phase!=='travel')return;
+  S.day++;S.t+=86400000;
+  const w=S.weather=rollWeather();
+  const alive=living();
+  const ter=curTer();
+  S.dry=S.route==='cutoff'&&curNode().id==='southpass'&&S.legMiles<50&&mode==='travel';
+  // food
+  const need=alive.length*RATIONS[S.rations].lbs;
+  let starving=false;
+  if(S.sup.food>=need)S.sup.food-=need;else{starving=S.sup.food<need*.5;S.sup.food=0;}
+  if(starving&&!S.flags.starvedLogged){log('The food is gone. People are eating whatever the trail offers, which is very little.','bad');S.flags.starvedLogged=true;}
+  if(!starving)S.flags.starvedLogged=false;
+  // clothing
+  const cold=w.temp<40, short=cold?Math.max(0,alive.length*2-S.sup.clothes):0;
+  for(const p of alive){
+    let d=0;
+    if(!p.ill)d+=3;
+    if(mode==='rest')d+=4+(hasTrait('fiddler')?2:0);
+    if(mode==='travel')d+=PACE[S.pace].hp;
+    d+=starving?-10:RATIONS[S.rations].hp;
+    if(w.temp>=88)d-=ter==='desert'?3:2;
+    if(short>0)d-=Math.min(9,2+short*1.1);
+    if(S.dry)d-=4;
+    if(p.ill){
+      const D=DIS[p.ill.k];
+      d-=D.dmg*(mode==='rest'?.55:1)*(S.prof==='doctor'?.8:1)*(p.trait==='hardy'?.8:1);
+      p.ill.days--;
+      if(p.ill.days<=0){log(`${p.name} has recovered from ${D.n}.`,'good');p.ill=null;}
+    }
+    p.health=clamp(p.health+d,0,100);
+  }
+  // new illness
+  for(const p of alive){
+    if(p.ill)continue;
+    let c=.0045+(p.health<50?.006:0)+(p.health<25?.012:0)+(S.rations==='bare'||starving?.006:0)+(S.pace==='grueling'?.005:0)+(short?.007:0);
+    if(p.trait==='hardy')c*=.5;if(p.trait==='sickly')c*=2;if(S.prof==='doctor')c*=.85;
+    if(R()<c)sicken(p,rollDisease());
+  }
+  for(const p of alive)if(p.alive&&p.health<=0)die(p);
+  if(S.phase!=='travel')return;
+  // oxen
+  let od=mode==='rest'?3:mode==='travel'?PACE[S.pace].ox:.6;
+  if(mode==='travel'){
+    if(ter==='desert')od-=.6;if(ter==='mountains')od-=.4;if(S.dry)od-=3;
+    if(S.heirloom&&(ter==='hills'||ter==='mountains'))od-=.25;
+    if(month()<=2||month()>=9)od-=.5; // poor grass
+  }
+  if(od<0){if(hasTrait('oxen'))od*=.6;if(S.prof==='farmer')od*=.7;}
+  S.oxHealth=clamp(S.oxHealth+od,0,100);
+  if(S.sup.oxen>0&&S.oxHealth<35&&R()<.06){
+    S.sup.oxen--;S.oxHealth=Math.min(100,S.oxHealth+12);
+    log(S.sup.oxen?`An ox went down in the traces and did not get up. ${plural(S.sup.oxen,'ox','oxen')} left.`:'The last ox is dead. The wagon is not going anywhere.','bad');
+  }
+  // morale
+  let md=starving?-4:RATIONS[S.rations].mor;
+  if(mode==='travel')md+=PACE[S.pace].mor;
+  if(mode==='rest')md+=2+(hasTrait('fiddler')?2:0);
+  md+=living().filter(p=>p.trait==='optimist').length*.4-living().filter(p=>p.trait==='complainer').length*.5;
+  md-=living().filter(p=>p.ill).length*.4;
+  if(w.temp<20||w.temp>=88)md-=.5;
+  S.morale=clamp(S.morale+md+(60-S.morale)*.01,0,100);
+  // July 4
+  const dd=new Date(S.t);
+  if(dd.getUTCMonth()===6&&dd.getUTCDate()===4){
+    if(S.sup.whiskey>0){S.sup.whiskey--;S.morale=clamp(S.morale+8,0,100);log('The Fourth of July. Somebody fires a pistol at the sky and a bottle goes round the fire.','good');}
+    else{S.morale=clamp(S.morale+4,0,100);log('The Fourth of July. A speech is made. It goes on longer than the occasion warrants.','good');}
+  }
+  // travel
+  S.lastMi=0;
+  if(mode==='travel'){
+    let mi=PACE[S.pace].mi*TER[ter].f*oxFactor()*w.f*(S.morale<25?.88:1)*(S.heirloom&&(ter==='hills'||ter==='mountains')?.92:1)*(.88+R()*.22);
+    if(alive.length&&living().filter(p=>p.ill).length/living().length>.5)mi*=.85;
+    if(ter==='mountains'&&w.p==='heavy snow'&&month()>=9)mi=0;
+    mi=Math.max(0,Math.round(mi));
+    const rem=curNode().to-S.legMiles;
+    if(mi>=rem){S.legMiles+=rem;S.miles+=rem;S.lastMi=rem;arrive();return;}
+    S.legMiles+=mi;S.miles+=mi;S.lastMi=mi;
+    if(mi===0)log('Snow to the axles. The wagon did not move today.','bad');
+    if(S.dry&&!S.flags.dryLogged){log('No water today, and none tomorrow. The oxen know it before you do.','bad');S.flags.dryLogged=true;}
+  }
+  if(quiet)return;
+  // Sabbath
+  if(mode==='travel'&&dd.getUTCDay()===0&&hasTrait('sabbath')&&R()<.6&&!modalOpen){return sabbath();}
+  if(mode==='travel'){
+    const br={plains:.011,hills:.018,mountains:.024,desert:.014,valley:.01}[ter]*(S.pace==='grueling'?1.7:S.pace==='strenuous'?1.25:1);
+    if(R()<br){breakdown();return;}
+    if(R()<.11)runEvent();
+  }else if(mode==='rest'&&R()<.04)runEvent(['thief','grave','company','badwater','drink']);
+}
+
+function runDays(mode,n){
+  stopRun(true);
+  if(mode==='travel'&&!canTravel()){render();return;}
+  S.running={mode,n};
+  const step=()=>{
+    if(!S||S.phase!=='travel'||modalOpen){stopRun();return;}
+    if(mode==='travel'&&!canTravel()){stopRun();return;}
+    tick(mode);
+    if(S.running&&mode!=='travel'){S.running.n--;if(S.running.n<=0){stopRun();if(mode==='rest'&&!modalOpen)log('Back on your feet, more or less.');}}
+    save();render();
+  };
+  tickTimer=setInterval(step,mode==='travel'?520:360);
+  render();
+}
+function stopRun(silent){clearInterval(tickTimer);tickTimer=null;if(S)S.running=null;if(!silent)render();}
+function idleDays(n,mode){for(let i=0;i<n&&S.phase==='travel';i++)tick(mode||'idle',true);}
+
+/* ============ arrivals ============ */
+function arrive(){
+  S.leg++;S.legMiles=0;
+  const n=curNode();
+  stopRun(true);
+  S.morale=clamp(S.morale+3,0,100);
+  log(`Arrived at ${n.n}.`,'land');
+  if(n.t==='end')return endGame(true);
+  if(n.t==='river')rollRiver();
+  setTimeout(()=>arrivalModal(),40);
+}
+function arrivalModal(pre){
+  if(S.phase!=='travel')return;
+  const n=curNode();
+  if(n.t==='fort'||n.t==='town')return fortModal(pre);
+  if(n.t==='river')return riverModal(pre);
+  if(n.t==='pass')return passModal();
+  if(n.t==='dalles')return dallesModal();
+  let extra='';
+  if(n.id==='indrock'&&!S.flags.indrock){
+    S.flags.indrock=true;
+    const d=new Date(S.t);const ontime=d.getUTCMonth()<6||(d.getUTCMonth()===6&&d.getUTCDate()<=4);
+    if(ontime){S.morale=clamp(S.morale+10,0,100);extra=`<p class="good">You are here by the Fourth of July. People add their names to the rock with axle grease and feel, briefly, like history.</p>`;log('Made Independence Rock in good time. Names added to the rock in axle grease.','good');}
+    else{S.morale=clamp(S.morale-5,0,100);extra=`<p class="warn">It is past the Fourth of July. Nobody says anything, which says plenty.</p>`;log('Reached Independence Rock late. The mountains will not wait.','bad');}
+  }
+  if(n.id==='chimney'&&!S.flags.chimney){S.flags.chimney=true;S.morale=clamp(S.morale+4,0,100);}
+  choose(n.n,`<p>${BLURB[n.id]}</p>${extra}`,[{label:'Back on the trail',primary:true,fn:()=>null}],'Landmark');
+}
+
+function fortModal(pre){
+  const n=curNode();
+  const pct=Math.round((n.price-1)*100);
+  const store=n.t==='town'?'Hollister & Sons, outfitters':`the ${n.n.replace('Fort ','')} store`;
+  choose(n.n,`${pre?`<p>${pre}</p>`:''}<p>${BLURB[n.id]}</p>${pct?`<p class="facts">Prices at ${esc(store)} run ${pct}% above Independence.</p>`:''}`,[
+    {label:'Buy supplies',sub:store,fn:()=>{openStore(n.n,n.price,()=>fortModal());return KEEP;}},
+    {label:'Ask around',sub:'Hear what people are saying',fn:()=>{result(n.n,`<p>${pick(RUMORS)}</p>`,()=>fortModal(),'Overheard');return KEEP;}},
+    {label:'Back on the trail',primary:true,fn:()=>null}
+  ],n.t==='town'?'Jumping-off town':'Trading post');
+}
+
+function rollRiver(){
+  const r=curNode().river;
+  const rain=S.log.slice(0,6).some(e=>/rain/i.test(e.t))?.6:0;
+  S.river={d:Math.round((r.d[0]+R()*(r.d[1]-r.d[0])+rain)*10)/10,w:ri(r.w[0],r.w[1]),c:r.c};
+}
+function riverModal(pre){
+  const n=curNode(),r=n.river;
+  if(!S.river)rollRiver();
+  const v=S.river;
+  const opts=[
+    {label:'Ford it',sub:v.d<=2.5?'Shallow enough to wade the oxen across.':v.d<=3.5?'Water up to the wagon bed. Risky.':'Deep. Very likely to swamp the wagon.',fn:()=>cross('ford')},
+    {label:'Caulk the wagon and float it',sub:`Seal the box with tar and swim the oxen. Current: ${v.c}.`,fn:()=>cross('float')}
+  ];
+  if(r.ferry)opts.push({label:`Take the ferry (${money(r.ferry)})`,sub:'Safe, if you can stand the queue.',disabled:S.money<r.ferry,fn:()=>cross('ferry')});
+  if(r.guide)opts.push({label:'Hire a Shoshone guide',sub:'Asks 3 sets of clothing. Knows the safe line across.',disabled:S.sup.clothes<3,fn:()=>cross('guide')});
+  opts.push({label:'Wait a day and look again',sub:'Rivers rise and fall.',fn:()=>{idleDays(1);if(S.phase!=='travel')return null;const old=S.river.d;S.river.d=Math.max(1,Math.round((S.river.d+(R()-.55)*1.2)*10)/10);riverModal(`You wait. The river is now ${S.river.d} ft deep${S.river.d<old?', a little lower':S.river.d>old?', and higher than yesterday':''}.`);return KEEP;}});
+  choose(n.n,`${pre?`<p>${pre}</p>`:''}<p>${BLURB[n.id]}</p><p class="facts">${v.w} ft across · ${v.d} ft deep at the ford · ${v.c} current</p>`,opts,'River crossing');
+}
+function loseSupplies(frac){
+  const lost=[];
+  for(const k of ['food','clothes','bullets','meds','whiskey','wheel','axle','tongue']){
+    const n=Math.floor(S.sup[k]*frac*(.6+R()*.8));
+    if(n>0){S.sup[k]-=n;lost.push(k==='food'?`${n} lbs of food`:k==='bullets'?`${n} bullets`:k==='clothes'?plural(n,'set')+' of clothing':k==='meds'?plural(n,'medicine kit'):k==='whiskey'?plural(n,'bottle')+' of whiskey':`${n} spare ${k}${n>1?'s':''}`);}
+  }
+  return lost.length?lost.join(', '):'nothing of consequence';
+}
+function cross(how){
+  const n=curNode(),v=S.river;let risk,text='';
+  if(how==='ford')risk=v.d<=2.5?.04:v.d<=3.5?.28:.62;
+  if(how==='float')risk=({gentle:.07,moderate:.15,swift:.3})[v.c]+(v.d<2.5?.05:0);
+  if(how==='ferry'){S.money-=n.river.ferry;const w=ri(n.river.wait[0],n.river.wait[1]);idleDays(w);risk=.02;text=w?`You wait ${plural(w,'day')} for your turn at the ferry. `:'The ferry takes you straight away. ';}
+  if(how==='guide'){S.sup.clothes-=3;risk=.03;text='Your guide walks the lead ox in, reads the water between the islands and brings you across without fuss. ';}
+  if(S.phase!=='travel')return null;
+  idleDays(1);
+  if(S.phase!=='travel')return null;
+  S.river=null;
+  if(R()>=risk){
+    if(how==='ford'&&v.d<=2.5&&R()<.3){idleDays(1);return text+'The wagon bogs down in the mud mid-river and costs you a day of digging, but everything comes out dry.';}
+    return text+pick(['You cross without incident. Nobody admits how frightened they were.','The far bank, at last. A wheel squeaks; otherwise, fine.','Across, wet to the waist and otherwise intact.']);
+  }
+  const lost=loseSupplies(how==='ford'?(v.d>3.5?.35:.2):.25);
+  let out=text+`${how==='ford'?'The current takes the wagon broadside and it tips.':'The wagon rolls in the current.'} You lose ${lost}.`;
+  if(S.sup.oxen>1&&R()<.3){S.sup.oxen--;out+=' One ox is swept downstream.';}
+  const dc=how==='ford'?(v.d>3.5?.35:.15):.22;
+  if(R()<dc){const p=pickMember();if(p){out+=` ${p.name} is pulled under and does not come up.`;die(p,'drowning');}}
+  return out;
+}
+
+function passModal(){
+  if(S.flags.routeChosen)return choose('South Pass',`<p>${BLURB.southpass}</p>`,[{label:'Back on the trail',primary:true,fn:()=>null}],'Continental Divide');
+  choose('South Pass',`<p>${BLURB.southpass}</p><p>The road forks ahead. The main trail swings south to Fort Bridger. Sublette’s Cutoff strikes straight west across dry country.</p>`,[
+    {label:'Take the road to Fort Bridger',sub:'About 287 miles to Soda Springs. Water, a blacksmith, a store.',fn:()=>{S.route='bridger';S.flags.routeChosen=true;return 'You take the long way round. The oxen approve.';}},
+    {label:'Take Sublette’s Cutoff',sub:'About 228 miles to Soda Springs. The first 50 have no water.',fn:()=>{S.route='cutoff';S.flags.routeChosen=true;return 'You fill every barrel and canteen and point the wagon west. Nobody mentions the bones beside the road.';}}
+  ],'Continental Divide');
+}
+
+function dallesModal(){
+  const live=living().length;
+  const toll=5+.1*(S.sup.oxen+live);
+  choose('The Dalles',`<p>${BLURB.dalles}</p><p class="facts">Columbia by raft: about 5 days, rapids included · Barlow Road: 100 miles over the mountains, toll ${money(toll)}</p>`,[
+    {label:'Raft down the Columbia',sub:'Build a raft from the wagon box. Fast. The rapids are not a rumor.',fn:()=>raft(false)},
+    {label:'Raft with a hired pilot',sub:'A Wasco pilot will take you through for 3 sets of clothing.',disabled:S.sup.clothes<3,fn:()=>raft(true)},
+    {label:'Take the Barlow Road',sub:`Pay ${money(toll)} and haul the wagon over the Cascades.`,disabled:S.money<toll,fn:()=>{S.money-=toll;S.flags.barlow=true;return `You pay Mr. Barlow’s gatekeeper ${money(toll)} and start up the mountain. It is steep, muddy, and the last hard thing between you and the valley.`;}}
+  ],'End of the wagon road');
+}
+function raft(pilot){
+  if(pilot)S.sup.clothes-=3;
+  const lines=[];
+  for(let i=0;i<3&&S.phase==='travel';i++){
+    idleDays(i===2?1:2);
+    if(S.phase!=='travel')return null;
+    const risk=pilot?.06:.2;
+    if(R()<risk){
+      const lost=loseSupplies(.22);
+      let l=`At the ${['first','second','third'][i]} rapid the raft spins and swamps. You lose ${lost}.`;
+      if(R()<.25){const p=pickMember();if(p){l+=` ${p.name} is thrown into the water and lost.`;die(p,'drowning on the Columbia');}}
+      lines.push(l);
+    }else lines.push(pick(['A long white stretch of water, taken without trouble.','Fog on the river, and then nothing worse than spray.','The raft scrapes a rock and holds together.']));
+  }
+  if(S.phase!=='travel')return null;
+  for(const l of lines)log(l);
+  S.miles+=curNode().to;S.leg++;S.legMiles=0;
+  log('Landed below the Cascades and walked the last stretch into the Willamette Valley.','land');
+  endGame(true);
+  return null;
+}
+
+/* ============ breakdowns ============ */
+const PART={wheel:'A wheel has split along two spokes.',axle:'The rear axle has cracked through.',tongue:'The wagon tongue snapped in a rut.'};
+function breakdown(){
+  const part=pick(['wheel','axle','tongue']);
+  if(S.sup[part]>0){S.sup[part]--;log(`${PART[part]} Replaced it with the spare and lost half a day to swearing.`);return;}
+  if(S.prof==='carpenter'&&R()<.55){log(`${PART[part]} No spare, so you made one from a cottonwood and some patience.`,'good');return;}
+  S.broken=part;stopRun(true);brokenModal();
+}
+function brokenModal(pre){
+  const part=S.broken;
+  choose(`Broken ${part}`,`${pre?`<p>${pre}</p>`:''}<p>${PART[part]} You have no spare.</p>`,[
+    {label:'Try to repair it',sub:'Costs a day. No promises.',fn:()=>{idleDays(1);if(S.phase!=='travel')return null;if(R()<(S.prof==='carpenter'?.7:.35)){S.broken=null;return 'The repair holds. You decide not to look at it too closely.';}brokenModal('The repair did not hold.');return KEEP;}},
+    {label:'Wait for a passing wagon',sub:'One to three days. Someone may sell you a part.',fn:()=>{const d=ri(1,3);idleDays(d);if(S.phase!=='travel')return null;
+      if(R()<.6){const who=pick(STRANGERS);choose(`Broken ${part}`,`<p>After ${plural(d,'day')}, ${who} stops and looks at your wagon for a long time. They have a spare ${part}.</p>`,[
+        {label:'Pay $25 for it',disabled:S.money<25,fn:()=>{S.money-=25;S.broken=null;return `You pay ${who.replace(/^a /,'the ')} $25 and fit the new ${part}.`;}},
+        {label:'Offer 2 bottles of whiskey',disabled:S.sup.whiskey<2,fn:()=>{S.sup.whiskey-=2;S.broken=null;return 'Whiskey changes hands. So does the part.';}},
+        {label:'Offer 3 sets of clothing',disabled:S.sup.clothes<3,fn:()=>{S.sup.clothes-=3;S.broken=null;return 'They take the clothing. You take the part. Everybody is a little colder.';}},
+        {label:'Decline',fn:()=>{brokenModal();return KEEP;}}
+      ],'A passing wagon');return KEEP;}
+      brokenModal(`${plural(d,'day')} pass. Nobody with a spare ${part} comes by.`);return KEEP;}}
+  ],'Wagon trouble');
+}
+function oxenModal(){
+  choose('No oxen',`<p>Without a team the wagon is a very heavy tent.</p>`,[
+    {label:'Wait for a passing wagon',sub:'One to three days.',fn:()=>{const d=ri(1,3);idleDays(d);if(S.phase!=='travel')return null;
+      if(R()<.65){choose('No oxen',`<p>After ${plural(d,'day')}, a company with spare stock comes along. They will part with a yoke of oxen.</p>`,[
+        {label:'Pay $90 for a yoke',disabled:S.money<90,fn:()=>{S.money-=90;S.sup.oxen+=2;S.oxHealth=Math.max(S.oxHealth,70);return 'You hitch up two strange oxen, who regard you with suspicion.';}},
+        {label:'Trade 5 sets of clothing for one ox',disabled:S.sup.clothes<5,fn:()=>{S.sup.clothes-=5;S.sup.oxen+=1;S.oxHealth=Math.max(S.oxHealth,60);return 'One ox. It will have to do.';}},
+        {label:'Decline',fn:()=>null}
+      ],'A passing wagon');return KEEP;}
+      return `${plural(d,'day')} pass. Nobody can spare an ox.`;}},
+    {label:'Never mind',fn:()=>null}
+  ],'Stranded');
+}
+
+/* ============ events ============ */
+function region(){
+  const id=curNode().id;
+  if(['independence','kansas','bigblue','kearny','chimney'].includes(id))return 'pawnee';
+  if(['laramie','indrock','southpass'].includes(id))return 'lakota';
+  if(['blue','dalles'].includes(id))return 'umatilla';
+  return 'shoshone';
+}
+function sabbath(){
+  const p=traitHolder('sabbath');
+  choose('The Sabbath',`<p>It is Sunday. ${p.name} asks, not for the first time, that the company rest and keep the day.</p>`,[
+    {label:'Rest for the day',fn:()=>{idleDays(1,'rest');S.morale=clamp(S.morale+4,0,100);return 'You rest. There is a short service, a long nap, and somebody washes their shirts.';}},
+    {label:'Keep moving',fn:()=>{S.morale=clamp(S.morale-5,0,100);return `${p.name} says nothing for the rest of the day, loudly.`;}}
+  ],'Sunday');
+}
+const EVENTS={
+  thief:{w:()=>1,run(){if(S.sup.oxen>2&&R()<.25){S.sup.oxen--;log('A thief went through the herd in the night. One ox is gone, and so is whoever took it.','bad');return;}const n=Math.min(S.sup.food,ri(20,60));if(!n)return;S.sup.food-=n;log(`Someone helped themselves to ${n} lbs of food in the night. Every company within a mile denies it.`,'bad');}},
+  lost:{w:()=>['hills','mountains','desert'].includes(curTer())?.6:.25,run(){const d=ri(1,3);idleDays(d);log(`Took a wrong fork and lost ${plural(d,'day')} finding the road again. The map is now referred to as "the map".`,'bad');}},
+  grave:{w:()=>curTer()==='plains'?1.4:.6,run(){S.stats.graves+=ri(1,5);S.morale=clamp(S.morale-2,0,100);log(pick(['Passed four fresh graves today. One board reads only "Infant, 1848."','A grave by the road, dug shallow. The wolves have been at it.','Three graves in a row, all the same family name, all the same week in June.','A headboard made from a wagon tailgate. The name has been carved with real care.']));}},
+  storm:{w:()=>['plains','hills'].includes(curTer())&&month()>=4&&month()<=8?.7:0,run(){const n=Math.min(S.sup.food,ri(15,40));S.sup.food-=n;log(`A hailstorm out of a clear afternoon. Stones the size of walnuts. ${n} lbs of flour soaked and spoiled.`,'bad');}},
+  fire:{w:()=>curTer()==='plains'&&month()>=6&&month()<=9?.3:0,run(){const c=Math.min(S.sup.clothes,ri(1,2)),f=Math.min(S.sup.food,ri(20,50));S.sup.clothes-=c;S.sup.food-=f;log(`Prairie fire. You outran it, mostly. Lost ${f} lbs of food and ${plural(c,'set')} of clothing.`,'bad');}},
+  stampede:{w:()=>curTer()==='plains'?.5:0,run(){idleDays(1);let t='A herd of bison crossed the trail and kept crossing it for most of the day.';if(R()<.3){S.oxHealth=clamp(S.oxHealth-15,0,100);t+=' One of the oxen got caught up in it and is limping.';}log(t,'bad');}},
+  badwater:{w:()=>.6,run(){const p=pickMember(x=>!x.ill);if(p)sicken(p,'dysentery',`${p.name} drank from a slough that smelled wrong. Dysentery.`);}},
+  snakebite:{w:()=>['plains','hills','desert'].includes(curTer())&&month()>=4&&month()<=8?.35:0,run(){const p=pickMember(x=>!x.ill);if(p)sicken(p,'snakebite',`${p.name} was bitten by a rattlesnake while gathering buffalo chips for the fire.`);}},
+  arm:{w:()=>.2,run(){const p=pickMember(x=>!x.ill);if(p)sicken(p,'arm',`${p.name} fell from the wagon tongue and broke an arm.`);}},
+  berries:{w:()=>['hills','mountains','valley'].includes(curTer())&&month()>=6&&month()<=8?.6:0,run(){const n=ri(10,30);S.sup.food+=n;S.morale=clamp(S.morale+2,0,100);log(`Found chokecherries and currants along a creek. ${n} lbs, and everyone's fingers purple.`,'good');}},
+  strayox:{w:()=>S.sup.oxen<12?.25:0,run(){S.sup.oxen++;log('A stray ox wandered into camp and seems to have decided it lives with you now.','good');}},
+  damp:{w:()=>/rain/.test(S.weather.p)&&S.sup.bullets>0?1:0,run(){const n=Math.min(S.sup.bullets,20);S.sup.bullets-=n;log(`Rain got into the powder. ${n} rounds ruined.`,'bad');}},
+  drink:{w:()=>hasTrait('drink')&&S.sup.whiskey>0?1.1:0,run(){const p=traitHolder('drink');S.sup.whiskey--;p.health=clamp(p.health-5,0,100);S.morale=clamp(S.morale+2,0,100);log(`A bottle of whiskey has gone missing. ${p.name} is in an excellent mood and cannot explain why.`);}},
+  company:{w:()=>.5,run(){S.morale=clamp(S.morale+4,0,100);log(`Camped alongside ${pick(STRANGERS)}. News traded, a little tobacco, and a song nobody knew all the words to.`,'good');}},
+  gold:{w:()=>!S.flags.gold&&month()>=7?3:0,run(){S.flags.gold=true;S.morale=clamp(S.morale-4,0,100);log('A rider heading east says they have found gold in California, enough to pick up off the ground. Several people in the company go very quiet.','land');}},
+  kindness:{w:()=>S.flags.kind&&!S.flags.kindPaid&&S.miles-S.flags.kind.miles>250?1.6:0,run(){S.flags.kindPaid=true;const f=S.flags.kind.name;if(S.flags.kind.big){S.sup.clothes+=2;S.sup.meds+=1;S.money+=20;log(`The ${f} family, the ones you fed back at mile ${S.flags.kind.miles}, catch up with you. They insist on leaving two sets of clothing, a medicine kit and $20.`,'good');}else{S.sup.food+=40;log(`The ${f} family catch up and return the favor: 40 lbs of food and a great deal of handshaking.`,'good');}}},
+  stranded:{w:()=>S.sup.food>150&&!S.flags.kind?.7:0,run(){const f=pick(FAMILIES);choose('A family by the road',`<p>The ${f} family’s wagon is axle-deep in a slough and their stores are spoiled. There are four children. The father asks, without much hope, whether you can spare any food.</p>`,[
+    {label:'Give them 60 lbs',sub:`You have ${S.sup.food} lbs.`,fn:()=>{S.sup.food-=60;S.morale=clamp(S.morale+6,0,100);S.flags.kind={name:f,miles:S.miles,big:true};return `The ${f}s thank you more than is comfortable. It is a good feeling, and a lighter wagon.`;}},
+    {label:'Give them 20 lbs',fn:()=>{S.sup.food-=20;S.morale=clamp(S.morale+2,0,100);S.flags.kind={name:f,miles:S.miles,big:false};return 'It is not much. They take it anyway.';}},
+    {label:'Keep moving',fn:()=>{S.morale=clamp(S.morale-6,0,100);return 'Nobody in the company speaks for the rest of the afternoon.';}}
+  ],'Encounter');}},
+  snakeoil:{w:()=>S.money>=8?.45:0,run(){choose('A man with a cart',`<p>Professor Thaddeus Quill offers his Celestial Restorative: “cures the ague, the flux, melancholy and the vapors.” Eight dollars a bottle. The professor smells strongly of the product.</p>`,[
+    {label:'Buy a bottle ($8)',fn:()=>{S.money-=8;const r=R();if(r<.5){S.morale=clamp(S.morale+6,0,100);return 'It is mostly alcohol. Spirits improve considerably.';}if(r<.75){const p=living().filter(x=>x.ill)[0]||pickMember();p.health=clamp(p.health+12,0,100);return `It is mostly laudanum. ${p.name} sleeps well for the first time in a week.`;}return 'It is mostly creek water with a dash of molasses. The professor is already over the next hill.';}},
+    {label:'Decline',fn:()=>'The professor looks wounded, and moves on to the next wagon.'}
+  ],'Encounter');}},
+  abandoned:{w:()=>.7,run(){choose('An abandoned wagon',`<p>A wagon left by the trail, its cover flapping. A cast-iron stove and a piano have been rolled off beside it. Nobody is in sight.</p>`,[
+    {label:'Search it quickly',fn:()=>{const k=pick(['food','clothes','bullets']);const n=k==='food'?ri(20,50):k==='clothes'?ri(1,2):20;S.sup[k]+=n;return `You find ${k==='food'?n+' lbs of food':k==='clothes'?plural(n,'set')+' of clothing':'a box of ammunition'}. You leave the piano.`;}},
+    {label:'Search it thoroughly',sub:'Better pickings. You do not know why it was left.',fn:()=>{const k=pick(['wheel','axle','tongue']);S.sup[k]++;S.sup.food+=ri(30,70);let t=`Under the floorboards: a spare ${k} and a sack of bacon.`;if(R()<.3){const p=pickMember(x=>!x.ill);if(p){sicken(p,'cholera');t+=` In the back, wrapped in a quilt, you find the reason it was abandoned. Two days later ${p.name} has cholera.`;}}return t;}},
+    {label:'Leave it alone',fn:()=>'You leave it. Somebody else will find it before nightfall.'}
+  ],'On the road');}},
+  gamble:{w:()=>S.money>=10?.45:0,run(){const lucky=hasTrait('fingers');choose('Cards by the fire',`<p>A man in a good coat is dealing faro by lantern light and asks if you would care to try your luck.${lucky?` ${traitHolder('fingers').name} is already pulling up a crate.`:''}</p>`,[
+    {label:'Bet $10',fn:()=>bet(10,lucky)},
+    {label:'Bet $50',disabled:S.money<50,fn:()=>bet(50,lucky)},
+    {label:'Decline',fn:()=>'You turn in early. The man in the good coat is gone by morning, along with several people’s savings.'}
+  ],'Evening');}},
+  quitter:{w:()=>living().length>1?(S.morale<40?1.2:.2)+(S.flags.gold?.8:0):0,run(){const p=pickMember(x=>!x.lead);if(!p)return;const why=S.flags.gold?'has heard about the gold and wants to take the cutoff south to California':'has had enough and wants to join a faster company up ahead';choose('A parting of ways',`<p>${p.name} ${why}.</p>`,[
+    {label:'Let them go',sub:'They take a set of clothing and 30 lbs of food.',fn:()=>{p.alive=false;p.cause='left the company';p.left=true;p.where=`mile ${S.miles}`;p.date=fmtDate(S.t);S.sup.clothes=Math.max(0,S.sup.clothes-1);S.sup.food=Math.max(0,S.sup.food-30);S.morale=clamp(S.morale-5,0,100);return `${p.name} shakes hands all round and is gone by noon.`;}},
+    {label:'Talk them out of it',sub:`Morale is ${moraleWord(S.morale).toLowerCase()}.`,fn:()=>{if(R()<.3+S.morale/150){S.morale=clamp(S.morale+3,0,100);return `${p.name} stays. "For now," they say.`;}p.alive=false;p.cause='left the company';p.left=true;p.where=`mile ${S.miles}`;p.date=fmtDate(S.t);S.sup.food=Math.max(0,S.sup.food-30);S.morale=clamp(S.morale-8,0,100);return `It does not go well. ${p.name} leaves that night, with 30 lbs of food and some choice words.`;}},
+    {label:'Offer a bottle of whiskey to stay',disabled:S.sup.whiskey<1,fn:()=>{S.sup.whiskey--;if(R()<.75)return `${p.name} accepts the bottle and the argument, in that order.`;p.alive=false;p.cause='left the company';p.left=true;p.where=`mile ${S.miles}`;p.date=fmtDate(S.t);return `${p.name} takes the bottle and leaves anyway.`;}}
+  ],'Morale');}},
+  native:{w:()=>.6,run(){const r=region();const T={
+    pawnee:{who:'A party of Pawnee men on horseback',give:'food',n:60,what:'60 lbs of dried corn and squash',ask:'clothes',an:2},
+    lakota:{who:'A group of Lakota traders',give:'food',n:80,what:'about 80 lbs of dried buffalo meat',ask:'clothes',an:2},
+    shoshone:{who:'Shoshone families camped by the river',give:'food',n:70,what:'70 lbs of dried salmon',ask:'clothes',an:2},
+    umatilla:{who:'Umatilla traders driving a string of horses and cattle',give:'oxen',n:1,what:'a fresh, well-fed ox',ask:'clothes',an:4}
+  }[r];const can=S.sup[T.ask]>=T.an;choose('Traders',`<p>${T.who} ride up to the wagon. They offer ${T.what} in exchange for ${T.an} sets of clothing.</p>`,[
+    {label:'Make the trade',disabled:!can,sub:can?'':`You only have ${S.sup.clothes} sets.`,fn:()=>{S.sup[T.ask]-=T.an;S.sup[T.give]+=T.n;if(T.give==='oxen')S.oxHealth=Math.min(100,S.oxHealth+8);return 'The trade is made with a good deal of careful inspection on both sides. Everyone seems satisfied.';}},
+    {label:'Politely decline',fn:()=>'They nod and ride on toward the next wagon.'}
+  ],'Encounter');}},
+  lameox:{w:()=>S.sup.oxen>1?.5:0,run(){choose('A lame ox',`<p>One of the oxen is favoring a foreleg and falling behind the yoke.</p>`,[
+    {label:'Rest the team two days',fn:()=>{idleDays(2,'rest');S.oxHealth=clamp(S.oxHealth+10,0,100);return 'Two days of grass and quiet. The ox walks evenly again.';}},
+    {label:'Butcher it',sub:'One fewer ox, a great deal more food.',fn:()=>{S.sup.oxen--;S.sup.food+=150;return 'You butcher the ox and dry what you can. 150 lbs of meat. The rest of the team watches.';}},
+    {label:'Push on',fn:()=>{S.oxHealth=clamp(S.oxHealth-10,0,100);if(R()<.3){S.sup.oxen--;return 'The ox makes it four more miles and lies down for good.';}return 'It limps, but it keeps up. For now.';}}
+  ],'The team');}},
+  heirloom:{w:()=>S.heirloom&&['hills','mountains'].includes(curTer())?.8:0,run(){const p=pickMember(x=>!x.lead)||leader();choose('The dresser',`<p>The oak dresser from back home is jammed against the wagon bows again. It weighs as much as an ox and has slowed you on every grade since the Platte. ${p.name} points out, with feeling, that it belonged to their grandmother.</p>`,[
+    {label:'Leave it by the trail',fn:()=>{S.heirloom=false;S.morale=clamp(S.morale-5,0,100);return 'You set it upright beside the road, facing west, like it is waiting for someone. The wagon is noticeably lighter.';}},
+    {label:'Keep it',fn:()=>'The dresser stays. Nobody is happy, but nobody is happy anyway.'}
+  ],'Load');}}
+};
+function bet(n,lucky){
+  if(R()<(lucky?.6:.42)){S.money+=n;S.morale=clamp(S.morale+3,0,100);return lucky?`You win $${n}. You decide not to ask how.`:`You win $${n}. The man in the good coat congratulates you without warmth.`;}
+  S.money-=n;S.morale=clamp(S.morale-2,0,100);return `You lose $${n}. It seemed like such a sure thing.`;
+}
+function runEvent(only){
+  const w={};
+  for(const k in EVENTS)if(!only||only.includes(k))w[k]=EVENTS[k].w();
+  if(!Object.values(w).some(v=>v>0))return;
+  EVENTS[wpick(w)].run();
+}
+
+/* ============ choices UI ============ */
+function openModal(html){
+  $('#sheet').innerHTML=html;$('#modal').hidden=false;modalOpen=true;
+  const f=$('#sheet').querySelector('input,button:not([disabled])');if(f)setTimeout(()=>f.focus({preventScroll:true}),30);
+  $('#sheet').scrollTop=0;
+}
+function closeModal(){$('#modal').hidden=true;modalOpen=false;render();}
+function choose(title,body,choices,eyebrow){
+  if(S&&S.phase==='end'&&!choices.endScreen)return;
+  if(tickTimer)stopRun(true);
+  openModal(`${eyebrow?`<div class="eyebrow">${esc(eyebrow)}</div>`:''}<h3>${esc(title)}</h3>${body}<div class="choices">${choices.map((c,i)=>`<button class="choice${c.primary?' primary':''}" data-i="${i}" ${c.disabled?'disabled':''}>${esc(c.label)}${c.sub?`<small>${esc(c.sub)}</small>`:''}</button>`).join('')}</div>`);
+  $('#sheet').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{
+    const r=choices[+b.dataset.i].fn();
+    if(S&&S.phase==='end')return;
+    if(r===KEEP)return;
+    if(typeof r==='string'&&r){log(r);result(title,`<p>${r}</p>`);return;}
+    closeModal();save();
+  });
+  render();
+}
+function result(title,body,after,eyebrow){
+  if(S&&S.phase==='end')return;
+  openModal(`${eyebrow?`<div class="eyebrow">${esc(eyebrow)}</div>`:''}<h3>${esc(title)}</h3>${body}<div class="choices"><button class="choice primary" id="okb">Carry on</button></div>`);
+  $('#okb').onclick=()=>{closeModal();save();if(after)after();};
+  render();
+}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600);}
+
+/* ============ store ============ */
+function openStore(where,mult,done){
+  const cart={};ITEMS.forEach(i=>cart[i.k]=0);
+  const start=S.leg===0&&S.day===0&&S.phase==='outfit';
+  const price=i=>Math.round(i.price*mult*100)/100;
+  const total=()=>ITEMS.reduce((s,i)=>s+cart[i.k]*price(i),0);
+  const recommend=()=>{
+    ITEMS.forEach(i=>cart[i.k]=0);
+    const plan=[['oxen',3],['food',8],['clothes',10],['bullets',5],['wheel',1],['axle',1],['tongue',1],['meds',1],['food',3],['meds',1],['whiskey',2],['oxen',1],['clothes',4],['food',3]];
+    for(const [k,q] of plan){const it=ITEMS.find(i=>i.k===k);for(let n=0;n<q;n++){if(total()+price(it)<=S.money&&(S.sup[k]+(cart[k]+1)*it.per)<=it.max)cart[k]++;}}
+  };
+  const draw=()=>{
+    const t=total();
+    openModal(`<div class="eyebrow">${start?'Hollister & Sons, outfitters':where}</div><h3>${start?'Outfit the wagon':'Buy supplies'}</h3>
+      ${start?`<p>A good outfit for a family of five: three yoke of oxen, a thousand pounds of provisions, two sets of clothing each, spares for everything that breaks. The clerk says this with the confidence of a man who has never left Missouri.</p>`:''}
+      <div class="store">${ITEMS.map(i=>`<div class="srow"><div class="nm">${i.n}<small>${money(price(i))} ${i.u} · you have ${i.k==='food'?S.sup.food+' lbs':i.k==='bullets'?S.sup.bullets:S.sup[i.k]}</small></div>
+        <div class="qty"><button data-k="${i.k}" data-d="-1" aria-label="Fewer ${i.n}">−</button><output>${cart[i.k]}</output><button data-k="${i.k}" data-d="1" aria-label="More ${i.n}">+</button></div>
+        <div class="line">${cart[i.k]?money(cart[i.k]*price(i)):''}</div></div>`).join('')}</div>
+      <div class="totals"><span>Total <b>${money(t)}</b></span><span class="${t>S.money?'bad':''}">Money left <b>${money(S.money-t)}</b></span></div>
+      <div class="btnrow">${start?`<button id="rec">Fill a sensible outfit</button>`:''}<button id="clr">Clear</button><span style="flex:1"></span><button class="go" id="buy" ${t>S.money||(start&&S.sup.oxen+cart.oxen*2<2)?'disabled':''}>${start?'Buy and set out':t?'Buy':'Leave the store'}</button></div>
+      ${start&&S.sup.oxen+cart.oxen*2<2?`<p class="facts warn">You will need at least one yoke of oxen.</p>`:''}`);
+    $('#sheet').querySelectorAll('.qty button').forEach(b=>b.onclick=()=>{
+      const it=ITEMS.find(i=>i.k===b.dataset.k),d=+b.dataset.d;
+      const n=cart[it.k]+d;
+      if(n<0)return;
+      if(d>0&&(S.sup[it.k]+n*it.per>it.max)){toast(`That is as many ${it.n.toLowerCase()} as the wagon can take.`);return;}
+      cart[it.k]=n;const st=$('#sheet').scrollTop;draw();$('#sheet').scrollTop=st;
+      const again=$('#sheet').querySelector(`.qty button[data-k="${it.k}"][data-d="${d}"]`);if(again)again.focus({preventScroll:true});
+    });
+    if(start)$('#rec').onclick=()=>{recommend();draw();};
+    $('#clr').onclick=()=>{ITEMS.forEach(i=>cart[i.k]=0);draw();};
+    $('#buy').onclick=()=>{
+      const t=total();if(t>S.money)return;
+      const bought=[];
+      ITEMS.forEach(i=>{if(cart[i.k]){S.sup[i.k]+=cart[i.k]*i.per;bought.push(i.k==='food'?`${cart[i.k]*100} lbs of food`:i.k==='oxen'?`${cart[i.k]*2} oxen`:i.k==='bullets'?`${cart[i.k]*20} bullets`:`${cart[i.k]} ${i.n.toLowerCase()}`);}});
+      S.money-=t;
+      if(start){S.phase='travel';log(`Bought ${bought.join(', ')||'nothing'}. ${money(S.money)} left.`);log(`The ${leader().name} company leaves Independence, Missouri. ${living().length} souls, ${S.sup.oxen} oxen, one oak dresser.`,'land');closeModal();save();return;}
+      if(bought.length)log(`Bought ${bought.join(', ')} for ${money(t)}.`);
+      closeModal();save();if(done)done();
+    };
+  };
+  if(start)recommend();
+  draw();
+}
+
+/* ============ camp actions ============ */
+function paceModal(){choose('Pace',`<p>How hard to push.</p>`,Object.entries(PACE).map(([k,p])=>({label:p.n+(S.pace===k?' (current)':''),sub:`${p.d} About ${p.mi} miles a day on good ground.`,primary:S.pace===k,fn:()=>{S.pace=k;return null;}})),'Camp');}
+function rationsModal(){choose('Rations',`<p>${S.sup.food} lbs of food for ${plural(living().length,'person','people')}.</p>`,Object.entries(RATIONS).map(([k,r])=>({label:r.n+(S.rations===k?' (current)':''),sub:`${r.d} About ${Math.floor(S.sup.food/Math.max(1,living().length*r.lbs))} days of food at this rate.`,primary:S.rations===k,fn:()=>{S.rations=k;return null;}})),'Camp');}
+function restModal(){choose('Rest',`<p>Rest restores health and the team, and costs food and calendar.</p>`,[1,2,3,5,7].map(d=>({label:plural(d,'day'),fn:()=>{closeModal();runDays('rest',d);return KEEP;}})).concat([{label:'Never mind',fn:()=>null}]),'Camp');}
+function treatModal(){
+  const sick=living().filter(p=>p.ill);
+  choose('Medicine',`<p>${plural(S.sup.meds,'medicine kit')} left.${S.prof==='doctor'?' Your training makes each kit go a good deal further.':''}</p>`,sick.map(p=>({label:`Treat ${p.name}`,sub:`${DIS[p.ill.k].n}, ${healthWord(p.health).toLowerCase()} health`,disabled:S.sup.meds<1,fn:()=>{S.sup.meds--;const doc=S.prof==='doctor';p.ill.days=Math.max(1,Math.ceil(p.ill.days/(doc?3:2)));p.health=clamp(p.health+(doc?25:12),0,100);return `You dose ${p.name} with what the kit allows${p.ill.k==='cholera'?' and keep them drinking':''}. ${doc?'They rally visibly.':'It seems to help.'}`;}})).concat([{label:'Never mind',fn:()=>null}]),'Camp');
+}
+function tradeModal(){
+  if(S.tradeDay===S.day)return result('Trade','<p>Nobody else is interested in trading today.</p>');
+  S.tradeDay=S.day;
+  const goods=[['clothes',1,3],['bullets',20,60],['food',40,120],['wheel',1,1],['axle',1,1],['tongue',1,1],['meds',1,1],['whiskey',1,3],['oxen',1,2]];
+  const have=goods.filter(g=>S.sup[g[0]]>=g[1]);
+  if(!have.length)return result('Trade','<p>You have nothing anyone wants.</p>');
+  const want=pick(have);const wn=ri(want[1],Math.min(want[2],S.sup[want[0]]));
+  const give=pick(goods.filter(g=>g[0]!==want[0]));const gn=ri(give[1],give[2]);
+  const nm=(k,n)=>k==='food'?`${n} lbs of food`:k==='bullets'?`${n} bullets`:k==='clothes'?plural(n,'set')+' of clothing':k==='meds'?plural(n,'medicine kit'):k==='whiskey'?plural(n,'bottle')+' of whiskey':k==='oxen'?plural(n,'ox','oxen'):`${n} spare ${k}${n>1?'s':''}`;
+  const who=pick(STRANGERS);
+  choose('Trade',`<p>${who[0].toUpperCase()+who.slice(1)} will give you ${nm(give[0],gn)} for ${nm(want[0],wn)}.</p>`,[
+    {label:'Accept',fn:()=>{S.sup[want[0]]-=wn;S.sup[give[0]]+=gn;return `Traded ${nm(want[0],wn)} for ${nm(give[0],gn)}.`;}},
+    {label:'Decline',fn:()=>null}
+  ],'On the road');
+}
+function suppliesModal(){
+  const s=S.sup;
+  choose('The wagon',`<dl class="ledger">
+    <dt>Money</dt><dd>${money(S.money)}</dd><dt>Oxen</dt><dd>${s.oxen} · ${oxWord(S.oxHealth).toLowerCase()}</dd>
+    <dt>Food</dt><dd>${s.food} lbs</dd><dt>Clothing</dt><dd>${plural(s.clothes,'set')}</dd><dt>Ammunition</dt><dd>${s.bullets} bullets</dd>
+    <dt>Spares</dt><dd>${s.wheel} wheel · ${s.axle} axle · ${s.tongue} tongue</dd><dt>Medicine</dt><dd>${plural(s.meds,'kit')}</dd><dt>Whiskey</dt><dd>${plural(s.whiskey,'bottle')}</dd>
+    <dt>Furniture</dt><dd>${S.heirloom?'One oak dresser, heavy':'None, now'}</dd></dl>`,[
+    {label:'Pour a round of whiskey',sub:'Lifts morale. Uses a bottle.',disabled:s.whiskey<1,fn:()=>{s.whiskey--;S.morale=clamp(S.morale+8,0,100);return 'A round by the fire. Somebody sings. Somebody else asks them to stop.';}},
+    ...(S.heirloom?[{label:'Leave the dresser by the trail',sub:'It slows you on every grade.',fn:()=>{S.heirloom=false;S.morale=clamp(S.morale-5,0,100);return 'You leave the dresser beside the road. It looks oddly dignified out there.';}}]:[]),
+    {label:'Close',primary:true,fn:()=>null}
+  ],'Inventory');
+}
+
+/* ============ hunting ============ */
+const GAME={bison:{lbs:500,hp:2,sz:44,sp:[40,70]},elk:{lbs:350,hp:2,sz:40,sp:[60,100]},deer:{lbs:110,hp:1,sz:30,sp:[80,140]},pronghorn:{lbs:60,hp:1,sz:25,sp:[150,230]},rabbit:{lbs:3,hp:1,sz:13,sp:[110,190]},squirrel:{lbs:1,hp:1,sz:10,sp:[70,130]}};
+const POOL={plains:{bison:3,deer:2,pronghorn:2,rabbit:3},hills:{deer:3,pronghorn:2,rabbit:3,bison:.6},mountains:{elk:2,deer:3,rabbit:2,squirrel:2},desert:{pronghorn:2,rabbit:4,squirrel:3},valley:{deer:3,rabbit:3,elk:1}};
+let H=null;
+function startHunt(){
+  if(S.sup.bullets<=0)return result('Hunting','<p>No ammunition. The game seems to know it.</p>');
+  stopRun(true);
+  H={t0:performance.now(),dur:30000,a:[],fx:[],meat:0,shots:0,spawn:0,last:performance.now(),depl:1/(1+(S.hunted[S.leg]||0)*.6),done:false,ter:curTer(),tip:true};
+  $('#hunt').hidden=false;modalOpen=true;$('#hTip').hidden=false;
+  requestAnimationFrame(huntFrame);render();
+}
+function huntFrame(now){
+  if(!H||H.done)return;
+  const c=$('#huntc'),{w,h,d}=fit(c),g=c.getContext('2d');
+  const dt=Math.min(60,now-H.last)/1000;H.last=now;
+  const left=Math.max(0,H.dur-(now-H.t0));
+  // spawn
+  H.spawn-=dt;
+  if(H.spawn<=0){H.spawn=(.7+R()*.9)/H.depl;
+    const k=wpick(POOL[H.ter]),G=GAME[k],dir=R()<.5?1:-1;
+    const yf=.58+R()*.36,sc=(.55+.75*(yf-.58)/.36)*d;
+    H.a.push({k,x:dir>0?-60*d:w+60*d,y:h*yf,dir,v:ri(G.sp[0],G.sp[1])*sc*.9,s:G.sz*sc,hp:G.hp,dead:false,ph:R()*6});}
+  for(const a of H.a){if(!a.dead){a.x+=a.v*dt*a.dir;a.ph+=dt*a.v/(a.s*.9);}}
+  H.a=H.a.filter(a=>a.dead||(a.x>-120*d&&a.x<w+120*d));
+  // draw
+  const sky=g.createLinearGradient(0,0,0,h);sky.addColorStop(0,C.ground);sky.addColorStop(1,C.g3);g.fillStyle=sky;g.fillRect(0,0,w,h);
+  ridge(g,w,h,h*.55,h*.18,0,H.ter==='plains'?'plains':H.ter,.16);
+  ridge(g,w,h,h*.6,h*.07,w*.4,H.ter==='mountains'?'hills':'plains',.1);
+  g.fillStyle=C.g2;g.fillRect(0,h*.58,w,h*.42);
+  g.globalAlpha=.25;g.strokeStyle=C.print;g.lineWidth=d;
+  for(let i=0;i<70;i++){const x=(i*137.5)%w,y=h*.6+((i*53)%100)/100*h*.38;g.beginPath();g.moveTo(x,y);g.lineTo(x-3*d,y-6*d);g.moveTo(x,y);g.lineTo(x+2*d,y-7*d);g.stroke();}
+  g.globalAlpha=1;
+  H.a.sort((p,q)=>p.y-q.y).forEach(a=>drawBeast(g,a.k,a.x,a.y,a.s,a.dir,a.ph,a.dead));
+  H.fx=H.fx.filter(f=>now-f.t<900);
+  for(const f of H.fx){const k=(now-f.t)/900;g.globalAlpha=1-k;
+    if(f.txt){g.fillStyle=f.c;g.font=`${16*d}px 'Courier Prime', monospace`;g.textAlign='center';g.fillText(f.txt,f.x,f.y-k*30*d);}
+    else{g.strokeStyle=C.ochre;g.lineWidth=2*d;g.beginPath();g.arc(f.x,f.y,(6+k*22)*d,0,7);g.stroke();}
+    g.globalAlpha=1;}
+  $('#hT').textContent=Math.ceil(left/1000);$('#hB').textContent=S.sup.bullets;$('#hM').textContent=H.meat;
+  if(left<=0||(S.sup.bullets<=0&&!H.fx.length))return finishHunt();
+  requestAnimationFrame(huntFrame);
+}
+$('#huntc').addEventListener('pointerdown',e=>{
+  if(!H||H.done||S.sup.bullets<=0)return;
+  e.preventDefault();
+  if(H.tip){H.tip=false;$('#hTip').hidden=true;}
+  const c=$('#huntc'),r=c.getBoundingClientRect(),d=c.width/r.width;
+  const x=(e.clientX-r.left)*d,y=(e.clientY-r.top)*d;
+  S.sup.bullets--;H.shots++;S.stats.shots++;
+  H.fx.push({x,y,t:performance.now()});
+  const rad=hasTrait('dragoon')?1.35:1;
+  let best=null,bd=1e9;
+  for(const a of H.a){if(a.dead)continue;const cy=a.y-a.s*.75,dx=x-a.x,dy=y-cy,dist=Math.hypot(dx,dy);if(dist<a.s*.95*rad&&dist<bd){best=a;bd=dist;}}
+  if(best){best.hp--;if(best.hp<=0){best.dead=true;const lb=GAME[best.k].lbs;H.meat+=lb;H.fx.push({x:best.x,y:best.y-best.s*1.4,t:performance.now(),txt:`+${lb} lbs`,c:C.print});}
+    else H.fx.push({x:best.x,y:best.y-best.s*1.4,t:performance.now(),txt:'hit',c:C.ochre});}
+});
+$('#hDone').onclick=()=>finishHunt();
+function finishHunt(){
+  if(!H||H.done)return;H.done=true;
+  $('#hunt').hidden=true;modalOpen=false;
+  S.hunted[S.leg]=(S.hunted[S.leg]||0)+1;
+  const able=living().filter(p=>!p.ill).length;
+  const cap=Math.min(250,60+45*able);
+  const got=Math.min(H.meat,cap);
+  S.sup.food+=got;S.stats.meat+=got;
+  let t;
+  if(!H.meat)t=`You fired ${plural(H.shots,'shot')} and brought back nothing but opinions about the wind.`;
+  else if(H.meat>got)t=`You shot ${H.meat} lbs of game but could only carry ${got} lbs back to the wagon. The rest is left for the wolves and the ravens, who are grateful.`;
+  else t=`You shot ${H.meat} lbs of game and carried all of it back to the wagon.`;
+  if((S.hunted[S.leg]||0)>2&&H.meat<50)t+=' The game around here is getting scarce.';
+  idleDays(1,'hunt');
+  if(S.phase!=='travel')return;
+  log(t,got?'good':'');
+  result('Hunting',`<p>${t}</p><p class="facts">${H.shots} bullets used · ${S.sup.bullets} left · ${S.sup.food} lbs of food in the wagon</p>`,null,'A day’s hunting');
+}
+
+/* ============ start & end ============ */
+function titleScreen(){
+  S=null;stopRun(true);
+  const saved=store('wob-save');
+  const hist=pastRuns().slice(0,6);
+  openModal(`<div class="eyebrow">Independence, Missouri · Spring, 1848</div>
+    <div class="title-art">Willamette<em>or bust</em></div>
+    <p>Two thousand miles of prairie, desert and mountain between you and the Oregon Country. Outfit a wagon, keep five people and a team of oxen alive, and make the valley before the snow.</p>
+    <p class="facts">Tap Continue to travel. The wagon rolls until something happens. Something always happens.</p>
+    <div class="choices">
+      ${saved?`<button class="choice primary" id="resume">Continue your journey<small>Pick up where the ledger left off</small></button>`:''}
+      <button class="choice${saved?'':' primary'}" id="newg">Start a new company<small>${saved?'Abandons the journey in progress':'Choose a profession, name your party, outfit the wagon'}</small></button>
+    </div>
+    ${hist.length?`<div class="history"><h2 style="margin-top:14px">Past companies</h2>${hist.map(h=>`<div><span>${esc(h.name)} · ${esc(h.prof)}</span><span>${h.ok?`arrived ${esc(h.date)} · ${h.score} pts`:`lost at mile ${h.miles}`}</span></div>`).join('')}</div>`:''}`);
+  if(saved)$('#resume').onclick=()=>{try{S=JSON.parse(saved);S.running=null;closeModal();if(S.broken)brokenModal();}catch(e){store('wob-save',null);titleScreen();}};
+  $('#newg').onclick=()=>setupProf();
+  render();
+}
+function setupProf(){
+  openModal(`<div class="eyebrow">Step 1 of 4</div><h3>Who leads the company?</h3><p>Richer is easier. Poorer scores higher at the end.</p>
+    <div class="choices">${Object.entries(PROF).map(([k,p])=>`<button class="choice" data-k="${k}">${p.n} · ${money(p.money)}<small>${p.d} Score ×${p.mult}</small></button>`).join('')}</div>`);
+  $('#sheet').querySelectorAll('.choice').forEach(b=>b.onclick=()=>setupNames(b.dataset.k));
+}
+function setupNames(prof,prev){
+  const pool=[...NAMES].sort(()=>R()-.5);
+  const tr=[...TRAITS].sort(()=>R()-.5);
+  const party=prev||[0,1,2,3,4].map(i=>({name:i?pool[i]:'',trait:tr[i].k,age:ri(i?16:24,i?58:48)}));
+  const draw=()=>{
+    openModal(`<div class="eyebrow">Step 2 of 4</div><h3>Name the party</h3><p>Five people in one wagon. Each brings a habit you will come to know well.</p>
+    <div class="namegrid">${party.map((p,i)=>`<div class="namerow"><input id="nm${i}" value="${esc(p.name)}" placeholder="${i?'Name':'Your name'}" maxlength="18" autocomplete="off" aria-label="${i?'Companion '+i:'Leader'} name"><div class="tr"><b>${trait(p.trait).n}</b>, ${trait(p.trait).d}</div></div>`).join('')}</div>
+    <div class="btnrow"><button id="reroll">Shuffle habits</button><span style="flex:1"></span><button class="go" id="nx">Next</button></div>`);
+    const grab=()=>party.forEach((p,i)=>p.name=$('#nm'+i).value.trim());
+    $('#reroll').onclick=()=>{grab();const t=[...TRAITS].sort(()=>R()-.5);party.forEach((p,i)=>p.trait=t[i].k);draw();};
+    $('#nx').onclick=()=>{grab();party.forEach((p,i)=>{if(!p.name)p.name=i?pool[i+5]:'Augustus';});setupMonth(prof,party);};
+  };
+  draw();
+}
+function setupMonth(prof,party){
+  const opts=[[2,'March','Early. The grass is not up yet and the oxen will go hungry.'],[3,'April','The traditional start. Muddy, but the season is on your side.'],[4,'May','Plenty of grass, plenty of company, plenty of cholera.'],[5,'June','Late. The mountains will be cold.'],[6,'July','Very late. You will be racing the snow.']];
+  openModal(`<div class="eyebrow">Step 3 of 4</div><h3>When do you leave?</h3><p>Leave too early and there is nothing for the oxen to eat. Leave too late and the Blue Mountains will be white.</p>
+    <div class="choices">${opts.map(o=>`<button class="choice" data-m="${o[0]}">${o[1]} 1848<small>${o[2]}</small></button>`).join('')}</div>`);
+  $('#sheet').querySelectorAll('.choice').forEach(b=>b.onclick=()=>{
+    const m=+b.dataset.m;
+    S={v:1,phase:'outfit',prof,money:PROF[prof].money,t:Date.UTC(1848,m,1,12),day:0,
+      party:party.map((p,i)=>({name:p.name,trait:p.trait,age:p.age,health:100,alive:true,ill:null,lead:i===0})),
+      sup:{oxen:0,food:0,clothes:0,bullets:0,wheel:0,axle:0,tongue:0,meds:0,whiskey:0},
+      heirloom:true,oxHealth:100,morale:65,pace:'steady',rations:'filling',leg:0,legMiles:0,miles:0,route:'bridger',
+      broken:null,river:null,log:[],flags:{},hunted:{},tradeDay:-1,stats:{graves:0,meat:0,shots:0},running:null};
+    S.weather=rollWeather();
+    log(`${party[0].name}, ${PROF[prof].n.toLowerCase()}, arrives in Independence with ${money(S.money)} and four companions.`,'land');
+    openStore('Independence',1);
+  });
+}
+function scoreOf(){
+  const m=PROF[S.prof].mult;let pts=0;
+  for(const p of living())pts+=p.health>=75?500:p.health>=50?400:p.health>=25?300:200;
+  pts+=S.sup.oxen*4+Math.floor(S.sup.food/25)+S.sup.clothes*2+Math.floor(S.sup.bullets/50)+(S.sup.wheel+S.sup.axle+S.sup.tongue)*2+S.sup.meds*5+S.sup.whiskey+Math.floor(S.money/5);
+  if(S.heirloom)pts+=100;
+  return Math.round(pts*m);
+}
+function endGame(ok){
+  if(S.phase==='end')return;
+  S.phase='end';stopRun(true);
+  if(H&&!H.done){H.done=true;$('#hunt').hidden=true;}
+  store('wob-save',null);
+  const lost=S.party.filter(p=>!p.alive&&!p.left), gone=S.party.filter(p=>p.left);
+  const sc=ok?scoreOf():0;
+  const lname=(S.party.find(p=>p.lead)||S.party[0]).name;
+  const hist=pastRuns();hist.unshift({name:`The ${S.party[0].name} company`,prof:PROF[S.prof].n.split(' ')[0],ok,date:shortDate(S.t),miles:S.miles,score:sc});
+  store('wob-history',JSON.stringify(hist.slice(0,12)));
+  const graves=lost.length?`<h2 style="margin-top:16px">Left beside the trail</h2><ul class="graves">${lost.map(p=>`<li>${esc(p.name)}, aged ${p.age}<small>${esc(p.cause)} · ${esc(p.where)} · ${esc(p.date)}</small></li>`).join('')}</ul>`:'';
+  const left=gone.length?`<p class="facts">${gone.map(p=>esc(p.name)).join(' and ')} left the company along the way.</p>`:'';
+  let body;
+  if(ok){
+    const d=new Date(S.t),late=d.getUTCMonth()>=10;
+    body=`<div class="eyebrow">${fmtDate(S.t)} · ${S.day} days on the trail</div><h3>The Willamette Valley</h3>
+      <p>${living().length===S.party.filter(p=>!p.left).length?'Everyone who set out with you is here to see it.':`${plural(living().length,'person','people')} of the company made it.`} ${late?'You arrive with the autumn rains already falling, which is better than the alternative.':'There is time to put up a cabin before the rains.'} ${S.heirloom?'The oak dresser comes down off the wagon and is set in a field, where it is admired for exactly as long as anyone can bear to look at it.':''}</p>
+      <div class="score">${sc.toLocaleString()} pts</div>
+      <p class="facts">${PROF[S.prof].n} · score ×${PROF[S.prof].mult} · ${S.miles} miles · ${S.stats.graves} graves passed · ${S.stats.meat} lbs hunted</p>${left}${graves}`;
+  }else{
+    body=`<div class="eyebrow">${fmtDate(S.t)} · mile ${S.miles}</div><h3>The trail claimed them</h3>
+      <p>The ${esc(S.party[0].name)} company got as far as ${esc(S.legMiles===0?curNode().n:'the country past '+curNode().n)}. Some later emigrant will find the wagon and wonder, for about as long as it takes to walk past it.</p>${left}${graves}`;
+  }
+  openModal(body+`<div class="choices"><button class="choice primary" id="again">Start a new company</button></div>`);
+  $('#again').onclick=()=>{closeModal();titleScreen();};
+  render();
+}
+
+/* ============ render ============ */
+function render(){
+  const meta=$('#meta'),st=$('#status'),lg=$('#log'),ac=$('#actions');
+  if(!S||S.phase==='outfit'&&!S.log.length){meta.innerHTML='';st.innerHTML='';lg.innerHTML='';ac.innerHTML='';$('#next').innerHTML='';$('#cap').textContent='';drawStrip();return;}
+  const n=curNode(),nx=nextNode(),N=nodes();
+  meta.innerHTML=`<span><b>${fmtDate(S.t)}</b></span><span>Mile <b>${S.miles}</b> of ${cum(N)[N.length-1]}</span><span>${money(S.money)}</span>`;
+  const remain=n.to-S.legMiles;
+  $('#next').innerHTML=nx?`<span>${atNode()?`At <b>${esc(n.n)}</b>`:`${esc(TER[n.ter].n)}`}</span><span>Next: <b>${esc(nx.n)}</b> · ${remain} mi</span>`:`<span><b>${esc(n.n)}</b></span><span></span>`;
+  $('#cap').textContent=S.running&&S.running.mode==='travel'?`${S.lastMi||0} miles today`:S.running?'Resting':atNode()?n.n:'Stopped';
+  const w=S.weather||{label:'',p:''};
+  const alive=living(),lb=RATIONS[S.rations].lbs*Math.max(1,alive.length);
+  const days=Math.floor(S.sup.food/lb);
+  const short=w.temp<40?Math.max(0,alive.length*2-S.sup.clothes):0;
+  st.innerHTML=`<section><h2>Conditions</h2><dl class="ledger">
+    <dt>Weather</dt><dd>${w.label}${w.p&&w.p!=='fair'?`, <span class="warn">${w.p}</span>`:''}${short?` <span class="bad">· not enough clothing</span>`:''}</dd>
+    <dt>Health</dt><dd class="${avgHealth()<50?'bad':''}">${healthWord(avgHealth())}</dd>
+    <dt>Morale</dt><dd>${moraleWord(S.morale)}<div class="meter"><i style="width:${S.morale}%"></i></div></dd>
+    <dt>Pace</dt><dd>${PACE[S.pace].n}</dd><dt>Rations</dt><dd>${RATIONS[S.rations].n}</dd>
+    <dt>Food</dt><dd class="${days<10?'bad':days<25?'warn':''}">${S.sup.food} lbs · ${days} days</dd>
+    <dt>Oxen</dt><dd class="${S.sup.oxen<4||S.oxHealth<35?'warn':''}">${S.sup.oxen} · ${oxWord(S.oxHealth).toLowerCase()}</dd>
+    ${S.broken?`<dt>Wagon</dt><dd class="bad">Broken ${S.broken}</dd>`:''}${S.dry?`<dt>Water</dt><dd class="bad">None</dd>`:''}
+    </dl></section>
+    <section><h2>The party</h2><ul class="party">${S.party.map(p=>{const hp=Math.round(p.health);const cls=hp>=60?'':hp>=30?'warn':'bad';
+      return `<li class="${p.alive?'':'dead'}"><span class="nm">${esc(p.name)}${p.lead&&p.alive?'<span class="lead">Leader</span>':''}${p.ill?`<span class="chip bad">${esc(DIS[p.ill.k].n.replace(/^a /,''))}</span>`:''}</span>
+      <span class="hp ${p.alive?cls:''}">${p.alive?healthWord(p.health):p.left?'Left':'Died'}</span>
+      <span class="tr">${esc(trait(p.trait).n)}${p.alive?'':` · ${esc(p.cause)}`}</span>
+      ${p.alive?`<div class="meter"><i style="width:${hp}%;background:var(${hp>=60?'--mend':hp>=30?'--ochre':'--wound'})"></i></div>`:''}</li>`;}).join('')}</ul></section>
+    <section><h2>Stores</h2><div class="stores">
+      <span>Clothing <b>${S.sup.clothes}</b></span><span>Bullets <b>${S.sup.bullets}</b></span><span>Medicine <b>${S.sup.meds}</b></span><span>Whiskey <b>${S.sup.whiskey}</b></span>
+      <span>Wheels <b>${S.sup.wheel}</b></span><span>Axles <b>${S.sup.axle}</b></span><span>Tongues <b>${S.sup.tongue}</b></span><span>Dresser <b>${S.heirloom?'Yes':'No'}</b></span></div></section>`;
+  lg.innerHTML=S.log.slice(0,160).map(e=>`<li class="${e.k}"><span class="d">${e.d}</span><span class="t">${esc(e.t)}</span></li>`).join('');
+  // actions
+  if(S.phase!=='travel'){ac.innerHTML='';drawStrip();return;}
+  const run=S.running,dis=run?'disabled':'';
+  const sick=alive.some(p=>p.ill);
+  const b=[];
+  if(run)b.push(`<button class="go" data-a="stop">${run.mode==='travel'?'Stop the wagon':'Stop resting'}</button>`);
+  else if(S.broken)b.push(`<button class="go alert" data-a="broken">Fix the wagon</button>`);
+  else if(S.sup.oxen<=0)b.push(`<button class="go alert" data-a="oxen">Find oxen</button>`);
+  else b.push(`<button class="go" data-a="go">Continue on the trail</button>`);
+  if(atNode()&&(n.t==='fort'||n.t==='town'))b.push(`<button data-a="fort" ${dis}>Visit the ${n.t==='town'?'outfitter':'fort'}</button>`);
+  if(atNode()&&n.t==='river'&&S.river)b.push(`<button class="alert" data-a="river" ${dis}>Cross the river</button>`);
+  b.push(`<button data-a="pace" ${dis}>Pace</button>`,`<button data-a="rations" ${dis}>Rations</button>`,`<button data-a="rest" ${dis}>Rest</button>`,`<button data-a="hunt" ${dis||S.sup.bullets<=0?'disabled':''}>Hunt</button>`,`<button data-a="trade" ${dis}>Trade</button>`);
+  if(sick)b.push(`<button data-a="treat" class="${S.sup.meds?'alert':''}" ${dis}>Treat the sick</button>`);
+  b.push(`<button data-a="wagon" ${dis}>Wagon</button>`,`<button data-a="quit" ${dis}>Menu</button>`);
+  ac.innerHTML=b.join('');
+  ac.querySelectorAll('button').forEach(x=>x.onclick=()=>act(x.dataset.a));
+  drawStrip();
+}
+function act(a){
+  if(modalOpen)return;
+  ({go:()=>{const n=curNode();if(atNode()&&S.leg>0){if(n.t==='river'&&S.river)return riverModal();if(n.t==='pass'&&!S.flags.routeChosen)return passModal();if(n.t==='dalles'&&!S.flags.barlow)return dallesModal();}runDays('travel',Infinity);},stop:()=>{stopRun();save();},broken:()=>brokenModal(),oxen:()=>oxenModal(),
+    fort:()=>fortModal(),river:()=>riverModal(),pace:paceModal,rations:rationsModal,rest:restModal,hunt:startHunt,trade:tradeModal,treat:treatModal,wagon:suppliesModal,
+    quit:()=>{save();choose('Menu','<p>Your journey is saved in this browser after every day.</p>',[{label:'Keep going',primary:true,fn:()=>null},{label:'Back to the title screen',fn:()=>{closeModal();titleScreen();return KEEP;}}]);}})[a]();
+}
+document.addEventListener('keydown',e=>{
+  if(modalOpen||!S||S.phase!=='travel')return;
+  if(e.target.closest&&e.target.closest('input,button'))return;
+  if(e.key===' '||e.key==='Enter'){e.preventDefault();S.running?act('stop'):(canTravel()&&act('go'));}
+});
+
+/* ============ drawing ============ */
+let C={};
+function readColors(){const s=getComputedStyle(document.documentElement);const v=n=>s.getPropertyValue(n).trim();C={ground:v('--ground'),g2:v('--ground-2'),g3:v('--ground-3'),print:v('--print'),dim:v('--print-dim'),faint:v('--print-faint'),ochre:v('--ochre')};}
+function fit(c){const r=c.getBoundingClientRect(),d=Math.min(2,window.devicePixelRatio||1);const w=Math.max(1,Math.round(r.width*d)),h=Math.max(1,Math.round(r.height*d));if(c.width!==w||c.height!==h){c.width=w;c.height=h;}return {w,h,d};}
+function ridge(g,w,h,base,amp,off,kind,alpha){
+  g.beginPath();g.moveTo(0,h);
+  for(let x=0;x<=w;x+=3){const X=(x+off)/w;let y;
+    if(kind==='mountains')y=base-amp*(.45+.55*Math.abs(Math.sin(X*4.7))*Math.abs(Math.sin(X*2.1+1))+.12*Math.sin(X*19));
+    else if(kind==='desert'){const s=Math.sin(X*3.4+Math.sin(X*1.3));y=base-amp*(s>.45?.85:s>.25?.3+(s-.25)/.2*.55:.3)-amp*.04*Math.sin(X*23);}
+    else if(kind==='hills')y=base-amp*(.5+.3*Math.sin(X*4.2)+.2*Math.sin(X*9.7+2));
+    else if(kind==='valley')y=base-amp*(.55+.25*Math.sin(X*3.3)+.1*Math.sin(X*13));
+    else y=base-amp*(.3+.15*Math.sin(X*3.1)+.08*Math.sin(X*11));
+    g.lineTo(x,y);}
+  g.lineTo(w,h);g.closePath();g.globalAlpha=alpha;g.fillStyle=C.print;g.fill();g.globalAlpha=1;
+}
+function drawBeast(g,k,x,y,s,dir,ph,dead){
+  g.save();g.translate(x,y);g.scale(dir,1);
+  if(dead){g.globalAlpha=.5;g.scale(1,.5);}
+  g.fillStyle=C.print;g.strokeStyle=C.print;g.lineCap='round';g.lineJoin='round';
+  if(k==='rabbit'||k==='squirrel'){
+    const hop=dead?0:Math.abs(Math.sin(ph))*s*.25;g.translate(0,-hop);
+    g.beginPath();g.ellipse(0,-s*.42,s*.55,s*.36,0,0,7);g.fill();
+    g.beginPath();g.arc(s*.5,-s*.68,s*.25,0,7);g.fill();
+    g.lineWidth=Math.max(1,s*.12);g.beginPath();
+    if(k==='rabbit'){g.moveTo(s*.45,-s*.85);g.lineTo(s*.32,-s*1.35);g.moveTo(s*.58,-s*.85);g.lineTo(s*.62,-s*1.32);}
+    else{g.moveTo(-s*.5,-s*.45);g.quadraticCurveTo(-s*1.1,-s*.8,-s*.75,-s*1.15);}
+    g.stroke();g.restore();return;
+  }
+  const big=k==='bison'||k==='ox';
+  const bl=s*(big?.92:.78),bh=s*(big?.4:.28),legH=s*(big?.42:.6),by=-legH-bh*.55;
+  const sw=dead?0:Math.sin(ph)*s*.16;
+  g.lineWidth=Math.max(1.2,s*(big?.12:.08));
+  g.beginPath();for(const [lx,o] of [[-bl*.7,sw],[-bl*.45,-sw],[bl*.45,-sw],[bl*.7,sw]]){g.moveTo(lx,by+bh*.3);g.lineTo(lx+o,0);}g.stroke();
+  g.beginPath();g.ellipse(0,by,bl,bh,0,0,7);g.fill();
+  if(k==='bison'){g.beginPath();g.ellipse(bl*.4,by-bh*.45,bl*.5,bh*.95,-.25,0,7);g.fill();}
+  const hx=bl*1.02,hy=k==='bison'?by+bh*.45:k==='ox'?by-bh*.1:by-bh*1.6;
+  g.beginPath();g.moveTo(bl*.55,by-bh*.6);g.lineTo(hx,hy-s*.1);g.lineTo(hx+s*.04,hy+s*.14);g.lineTo(bl*.6,by+bh*.4);g.closePath();g.fill();
+  g.beginPath();g.ellipse(hx+s*.12,hy+s*.03,s*(big?.24:.19),s*(big?.18:.1),.4,0,7);g.fill();
+  g.lineWidth=Math.max(1,s*.05);g.beginPath();
+  if(big){g.moveTo(hx,hy-s*.08);g.quadraticCurveTo(hx-s*.08,hy-s*.34,hx+s*.12,hy-s*.38);}
+  else if(k==='elk'){g.moveTo(hx,hy-s*.08);g.lineTo(hx-s*.3,hy-s*.7);g.moveTo(hx-s*.12,hy-s*.3);g.lineTo(hx+s*.08,hy-s*.55);g.moveTo(hx-s*.22,hy-s*.52);g.lineTo(hx-s*.02,hy-s*.82);}
+  else if(k==='deer'){g.moveTo(hx,hy-s*.08);g.lineTo(hx-s*.12,hy-s*.45);g.moveTo(hx-s*.06,hy-s*.26);g.lineTo(hx+s*.1,hy-s*.4);}
+  else if(k==='pronghorn'){g.moveTo(hx,hy-s*.08);g.quadraticCurveTo(hx+s*.02,hy-s*.38,hx-s*.08,hy-s*.4);}
+  g.stroke();
+  g.beginPath();g.moveTo(-bl*.95,by-bh*.2);g.lineTo(-bl*1.1,by+bh*(big?.9:.2));g.stroke();
+  g.restore();
+}
+function wheel(g,cx,cy,r,a){
+  g.strokeStyle=C.g2;g.lineWidth=r*.42;g.beginPath();g.arc(cx,cy,r,0,7);g.stroke();
+  g.strokeStyle=C.print;g.lineWidth=r*.16;g.beginPath();g.arc(cx,cy,r,0,7);g.stroke();
+  g.lineWidth=r*.07;g.beginPath();for(let i=0;i<8;i++){const q=a+i*Math.PI/4;g.moveTo(cx,cy);g.lineTo(cx+Math.cos(q)*r,cy+Math.sin(q)*r);}g.stroke();
+  g.fillStyle=C.print;g.beginPath();g.arc(cx,cy,r*.16,0,7);g.fill();
+}
+function drawWagon(g,x,y,s,a,ph,moving){
+  const bw=s*1.7,bh=s*.4,wr=s*.38,top=y-wr*1.15-bh;
+  // oxen and tongue
+  const oxS=s*.95;
+  g.strokeStyle=C.print;g.lineWidth=s*.06;g.beginPath();g.moveTo(x+bw*.5,top+bh*.8);g.lineTo(x+bw*.5+s*2.4,y-oxS*.55);g.stroke();
+  g.save();g.globalAlpha=.7;drawBeast(g,'ox',x+bw*.5+s*2.7,y-s*.06,oxS,1,ph+1.6,false);g.restore();
+  drawBeast(g,'ox',x+bw*.5+s*1.6,y,oxS,1,ph,false);
+  // box & bonnet
+  g.fillStyle=C.print;g.fillRect(x-bw/2,top,bw,bh);
+  g.beginPath();g.moveTo(x-bw*.52,top);g.bezierCurveTo(x-bw*.62,top-s*1.25,x+bw*.62,top-s*1.25,x+bw*.52,top);g.closePath();g.fill();
+  g.strokeStyle=C.g3;g.lineWidth=s*.035;g.globalAlpha=.5;
+  for(const f of [-.28,0,.28]){g.beginPath();g.moveTo(x+bw*f*1.05,top);g.quadraticCurveTo(x+bw*f*1.15,top-s*.6,x+bw*f*.9,top-s*.93);g.stroke();}
+  g.globalAlpha=1;
+  g.strokeStyle=C.g2;g.lineWidth=s*.04;g.beginPath();g.moveTo(x-bw/2,top+bh*.5);g.lineTo(x+bw/2,top+bh*.5);g.stroke();
+  wheel(g,x-bw*.3,y-wr,wr,a);wheel(g,x+bw*.33,y-wr*.82,wr*.82,a*1.2);
+}
+function landmarkShape(g,id,t,x,y,s){
+  g.fillStyle=C.print;g.strokeStyle=C.print;
+  if(t==='fort'||t==='town'){
+    if(t==='town'){for(let i=0;i<5;i++){const bx=x+(i-2)*s*1.1,bh=s*(.9+(i%3)*.35);g.fillRect(bx,y-bh,s*.9,bh);g.beginPath();g.moveTo(bx-s*.05,y-bh);g.lineTo(bx+s*.45,y-bh-s*.45);g.lineTo(bx+s*.95,y-bh);g.fill();}return;}
+    g.fillRect(x-s*2,y-s*.9,s*4,s*.9);
+    for(let i=0;i<=16;i++){const px=x-s*2+i*s*.25;g.beginPath();g.moveTo(px,y-s*.9);g.lineTo(px+s*.125,y-s*1.08);g.lineTo(px+s*.25,y-s*.9);g.fill();}
+    g.fillRect(x-s*2.3,y-s*1.4,s*.7,s*1.4);g.fillRect(x+s*1.6,y-s*1.4,s*.7,s*1.4);
+    g.lineWidth=s*.05;g.beginPath();g.moveTo(x,y-s*.9);g.lineTo(x,y-s*2.2);g.stroke();
+    g.fillStyle=C.ochre;g.fillRect(x,y-s*2.2,s*.6,s*.35);return;
+  }
+  if(id==='chimney'){g.beginPath();g.moveTo(x-s*2,y);g.quadraticCurveTo(x-s*.5,y-s*1.4,x-s*.25,y-s*1.6);g.lineTo(x+s*.25,y-s*1.6);g.quadraticCurveTo(x+s*.5,y-s*1.4,x+s*2,y);g.fill();g.fillRect(x-s*.18,y-s*3.4,s*.36,s*1.9);return;}
+  if(id==='indrock'){g.beginPath();g.ellipse(x,y,s*2.8,s*1.3,0,Math.PI,0);g.fill();return;}
+  if(id==='soda'){g.globalAlpha=.6;for(let i=0;i<5;i++){g.beginPath();g.arc(x+(i-2)*s*.5,y-s*(.4+i%2*.5),s*(.35+i%3*.12),0,7);g.fill();}g.globalAlpha=1;return;}
+  if(id==='blue'||id==='willamette'){for(let i=0;i<9;i++){const tx=x+(i-4)*s*.55,th=s*(1.2+(i*7%5)*.25);g.beginPath();g.moveTo(tx-s*.3,y);g.lineTo(tx,y-th);g.lineTo(tx+s*.3,y);g.fill();}
+    if(id==='willamette'){g.fillRect(x+s*2.6,y-s*.8,s*1.4,s*.8);g.beginPath();g.moveTo(x+s*2.5,y-s*.8);g.lineTo(x+s*3.3,y-s*1.4);g.lineTo(x+s*4.1,y-s*.8);g.fill();}return;}
+  if(id==='southpass'){g.lineWidth=s*.08;g.beginPath();g.moveTo(x,y);g.lineTo(x,y-s*1.4);g.stroke();g.beginPath();for(let i=0;i<3;i++){g.arc(x+s*.4,y-s*.2-i*s*.3,s*(.3-i*.07),0,7);}g.fill();return;}
+  if(t==='river'||t==='dalles'){g.globalAlpha=.55;g.lineWidth=s*.07;for(let i=0;i<5;i++){g.beginPath();const yy=y+s*.2+i*s*.22;g.moveTo(x-s*3,yy);for(let k=0;k<=12;k++)g.lineTo(x-s*3+k*s*.5,yy+Math.sin(k+i+t.length+performance.now()/400)*s*.06);g.stroke();}g.globalAlpha=1;
+    if(t==='dalles'){g.beginPath();g.moveTo(x-s*3,y);g.lineTo(x-s*2.5,y-s*1.6);g.lineTo(x-s*1,y-s*1.8);g.lineTo(x-s*.5,y);g.fill();}return;}
+}
+let scroll=0,wheelA=0,phase=0,lastT=0;
+function drawScene(now){
+  const c=$('#scene'),{w,h,d}=fit(c),g=c.getContext('2d');
+  const dt=Math.min(60,now-(lastT||now));lastT=now;
+  const moving=!!(S&&S.running&&S.running.mode==='travel'&&!modalOpen);
+  if(moving){const k=reduce?.35:1;scroll+=dt*.09*d*k;wheelA+=dt*.005*k;phase+=dt*.009*k;}
+  const ter=S&&S.phase!=='outfit'?curTer():'plains';
+  const sky=g.createLinearGradient(0,0,0,h);sky.addColorStop(0,C.ground);sky.addColorStop(1,C.g3);g.fillStyle=sky;g.fillRect(0,0,w,h);
+  g.globalAlpha=.16;g.fillStyle=C.print;g.beginPath();g.arc(w*.83,h*.24,h*.1,0,7);g.fill();g.globalAlpha=1;
+  const hz=h*.66;
+  ridge(g,w,h,hz,h*(ter==='mountains'?.42:ter==='desert'?.2:ter==='hills'?.2:.1),scroll*.08,ter==='mountains'?'mountains':ter==='desert'?'desert':ter==='valley'?'valley':ter==='hills'?'hills':'plains',.14);
+  // landmark ahead
+  if(S&&S.phase==='travel'){
+    const N=nodes();let L=null,dist=0;
+    if(atNode()&&S.leg>0){L=curNode();dist=0;}else if(nextNode()){L=nextNode();dist=curNode().to-S.legMiles;}
+    if(L&&dist<=70){const k=1-dist/70;const ls=h*.06*(.45+.55*k);g.save();g.globalAlpha=.35+.45*k;landmarkShape(g,L.id,L.t,w*(.98-.28*k),hz+h*.05+h*.06*k,ls);g.restore();}
+  }
+  ridge(g,w,h,hz+h*.06,h*.07,scroll*.3,ter==='mountains'||ter==='hills'?'hills':'plains',.12);
+  g.fillStyle=C.g2;g.fillRect(0,hz+h*.06,w,h);
+  // ruts and grass
+  g.strokeStyle=C.print;g.globalAlpha=.18;g.lineWidth=1.5*d;
+  g.beginPath();g.moveTo(0,h*.9);g.lineTo(w,h*.9);g.moveTo(0,h*.95);g.lineTo(w,h*.95);g.stroke();
+  g.globalAlpha=.3;g.lineWidth=d;
+  for(let i=0;i<46;i++){const span=w+40*d;const x=((i*173.3-scroll)%span+span)%span-20*d,y=hz+h*.1+((i*37)%100)/100*h*.22;g.beginPath();g.moveTo(x,y);g.lineTo(x-2*d,y-5*d);g.moveTo(x,y);g.lineTo(x+2*d,y-6*d);g.stroke();}
+  g.globalAlpha=1;
+  drawWagon(g,w*.3,h*.93,h*.17,wheelA,phase,moving);
+  // weather
+  if(S&&S.weather&&S.weather.p!=='fair'&&!reduce){
+    const snow=/snow/.test(S.weather.p),heavy=/heavy/.test(S.weather.p),n=heavy?110:55;
+    g.strokeStyle=C.print;g.fillStyle=C.print;g.globalAlpha=snow?.7:.35;g.lineWidth=d;
+    for(let i=0;i<n;i++){const sp=snow?.03:.5;const x=((i*97.1+now*sp*(snow?1:.4))%(w+40))-20,y=((i*61.7+now*sp)%h);
+      if(snow){g.beginPath();g.arc(x+Math.sin(now/700+i)*4*d,y,1.6*d,0,7);g.fill();}else{g.beginPath();g.moveTo(x,y);g.lineTo(x-3*d,y+10*d);g.stroke();}}
+    g.globalAlpha=1;
+  }
+}
+function drawStrip(){
+  const c=$('#strip'),{w,h,d}=fit(c),g=c.getContext('2d');g.clearRect(0,0,w,h);
+  if(!C.print)return;
+  const N=S?nodes():[...BASE,...BRIDGER,...TAIL],A=cum(N),T=A[A.length-1],pad=10*d,y=h*.5;
+  const X=m=>pad+(w-2*pad)*m/T;
+  g.lineCap='round';
+  g.strokeStyle=C.faint;g.lineWidth=2*d;g.beginPath();g.moveTo(X(0),y);g.lineTo(X(T),y);g.stroke();
+  const mi=S?S.miles:0;
+  g.strokeStyle=C.print;g.lineWidth=3*d;g.beginPath();g.moveTo(X(0),y);g.lineTo(X(mi),y);g.stroke();
+  N.forEach((n,i)=>{const x=X(A[i]),past=A[i]<=mi;g.fillStyle=past?C.print:C.ground;g.strokeStyle=past?C.print:C.dim;g.lineWidth=1.5*d;const r=4*d;g.beginPath();
+    if(n.t==='fort'||n.t==='town'||n.t==='end')g.rect(x-r,y-r,2*r,2*r);else if(n.t==='river'||n.t==='dalles'){g.moveTo(x,y-r*1.2);g.lineTo(x+r*1.1,y);g.lineTo(x,y+r*1.2);g.lineTo(x-r*1.1,y);g.closePath();}else g.arc(x,y,r*.85,0,7);
+    g.fill();g.stroke();});
+  const x=X(mi);g.fillStyle=C.ochre;g.beginPath();g.moveTo(x,y-5*d);g.lineTo(x+6*d,y-13*d);g.lineTo(x-6*d,y-13*d);g.closePath();g.fill();
+  g.fillRect(x-1*d,y-6*d,2*d,12*d);
+}
+function frame(now){if(C.print&&$('#hunt').hidden)drawScene(now);requestAnimationFrame(frame);}
+addEventListener('resize',()=>{drawStrip();});
+
+/* ============ boot ============ */
+function boot(data){
+  readColors();
+  if(data&&data.S){S=data.S;S.running=null;render();if(S.phase==='end'||S.phase==='outfit')titleScreen();}
+  else titleScreen();
+  requestAnimationFrame(frame);
+}
+try{window.claude?.hot?.snapshot?.(()=>({S:S?Object.assign({},S,{running:null}):null}));}catch(e){}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{readColors();render();});
+window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
+</script>
+
+<script src="../../home-button.js"></script>
+</body></html>
