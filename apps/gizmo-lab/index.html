@@ -51,6 +51,10 @@ button:focus-visible { outline: 3px solid var(--spark); outline-offset: 2px; }
 }
 .chip { background: var(--spark); color: var(--ink); font-family: var(--font-display); font-weight: 400; font-size: 17px; letter-spacing: .3px; }
 .ghost:active, .chip:active { transform: translateY(1px); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; }
+.toggle svg { width: 16px; height: 16px; }
+.toggle[aria-pressed="true"] { color: var(--spark); }
+.toggle[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
 .play {
   border: 0; border-radius: 16px; min-width: 108px; padding: 10px 18px;
   font-family: var(--font-display); font-size: 22px; letter-spacing: .5px;
@@ -147,7 +151,8 @@ body.running .tile { opacity: .55; }
       <span id="goalText"></span>
     </div>
     <button id="hintBtn" class="ghost" type="button">Hint</button>
-    <button id="soundBtn" class="ghost" type="button">Sound on</button>
+    <button id="musicBtn" class="ghost toggle" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>Music</button>
+    <button id="soundBtn" class="ghost toggle" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>Sounds</button>
     <button id="clearBtn" class="ghost" type="button">Clear</button>
     <button id="playBtn" class="play" type="button">Play</button>
   </header>
@@ -583,7 +588,37 @@ body.running .tile { opacity: .55; }
       if (u1.kind === 'trampoline' && f2.getBody().isDynamic()) { (this.boing = this.boing || []).push(f2.getBody()); }
     };
     pair(ua, fa, ub, fb); pair(ub, fb, ua, fa);
+    // impact sounds
+    if (fa.isSensor() || fb.isSensor()) return;
+    const A = fa.getBody(), B = fb.getBody();
+    if (!A.isDynamic() && !B.isDynamic()) return;
+    const wm = c.getWorldManifold(null);
+    if (!wm || !wm.points || !wm.points.length) return;
+    const pt = wm.points[0], n = wm.normal;
+    const va = A.getLinearVelocityFromWorldPoint(pt), vb = B.getLinearVelocityFromWorldPoint(pt);
+    const v = Math.abs((vb.x - va.x) * n.x + (vb.y - va.y) * n.y);
+    if (v < 1.2) return;
+    const now = this.steps;
+    const dyn = A.isDynamic() ? A : B;
+    const du = dyn.getUserData() || {};
+    if (du.lastHit !== undefined && now - du.lastHit < 6) return;
+    du.lastHit = now;
+    this.events.push({ type: 'hit', x: pt.x, y: pt.y, a: matOf(ua.kind), b: matOf(ub.kind), v });
   };
+  function matOf(k) {
+    switch (k) {
+      case 'bucket': case 'pulleyTop': case 'cannon': case 'button': case 'pin': case 'fan': case 'conveyor': case 'cannonball': case 'seesawBase': return 'metal';
+      case 'plank': case 'seesaw': case 'basket': return 'wood';
+      case 'domino': return 'domino';
+      case 'brick': return 'stone';
+      case 'frame': return 'floor';
+      case 'ball': return 'heavy';
+      case 'bball': return 'rubber';
+      case 'balloon': return 'balloon';
+      case 'trampoline': return 'tramp';
+      default: return 'wood';
+    }
+  }
 
   Sim.prototype.onPreSolve = function (c) {
     const fa = c.getFixtureA(), fb = c.getFixtureB();
@@ -1142,6 +1177,288 @@ body.running .tile { opacity: .55; }
 
 </script>
 <script>
+// Gizmo Lab — sound: calm generative music + musical machine sounds (Web Audio, no files)
+(function (root) {
+  let ac = null, master, comp, musicGain, sfxGain, reverb, revSend, musicRev, windGain, windSrc, windFilter;
+  let musicOn = true, sfxOn = true, ducked = false;
+
+  // C major pentatonic — consonant over every chord in the progression
+  const PENTA = [0, 2, 4, 7, 9];
+  const midi = m => 440 * Math.pow(2, (m - 69) / 12);
+  function pentaNote(i, base) { // i-th pentatonic step above base midi
+    const o = Math.floor(i / 5), k = ((i % 5) + 5) % 5;
+    return base + o * 12 + PENTA[k];
+  }
+
+  function makeImpulse(seconds, decay) {
+    const len = Math.floor(ac.sampleRate * seconds), buf = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+    return buf;
+  }
+
+  function init() {
+    if (ac) return ac;
+    const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
+    ac = new Ctx();
+    comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -18; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.25;
+    master = ac.createGain(); master.gain.value = 0.9;
+    master.connect(comp).connect(ac.destination);
+    reverb = ac.createConvolver(); reverb.buffer = makeImpulse(3.2, 2.6);
+    const revOut = ac.createGain(); revOut.gain.value = 0.55; reverb.connect(revOut).connect(master);
+    musicGain = ac.createGain(); musicGain.gain.value = 0;
+    musicGain.connect(master);
+    musicRev = ac.createGain(); musicRev.gain.value = 0.7; musicGain.connect(musicRev).connect(reverb);
+    sfxGain = ac.createGain(); sfxGain.gain.value = 0.9; sfxGain.connect(master);
+    revSend = ac.createGain(); revSend.gain.value = 0.35; sfxGain.connect(revSend).connect(reverb);
+    // fan wind: looping filtered noise, silent until fans run
+    const nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), nd = nb.getChannelData(0);
+    let last = 0; for (let i = 0; i < nd.length; i++) { last = last * 0.97 + (Math.random() * 2 - 1) * 0.03; nd[i] = last * 6; }
+    windSrc = ac.createBufferSource(); windSrc.buffer = nb; windSrc.loop = true;
+    windFilter = ac.createBiquadFilter(); windFilter.type = 'bandpass'; windFilter.frequency.value = 500; windFilter.Q.value = 0.6;
+    windGain = ac.createGain(); windGain.gain.value = 0;
+    windSrc.connect(windFilter).connect(windGain).connect(sfxGain); windSrc.start();
+    document.addEventListener('visibilitychange', () => {
+      if (!ac) return;
+      if (document.hidden) ac.suspend(); else if (musicOn || sfxOn) ac.resume();
+    });
+    return ac;
+  }
+  function wake() {
+    if (!init()) return null;
+    if (ac.state === 'suspended') ac.resume();
+    if (musicOn) startMusic();
+    return ac;
+  }
+
+  // ---------- instruments ----------
+  function env(g, t, a, peak, d) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+  }
+  function osc(type, f, t, dur, dest, peak, a) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    env(g, t, a || 0.004, peak, dur);
+    o.connect(g).connect(dest); o.start(t); o.stop(t + (a || 0.004) + dur + 0.05);
+    return o;
+  }
+  // soft marimba: fundamental + 4th partial, quick decay
+  function marimba(f, t, vel, dest) {
+    osc('sine', f, t, 0.9, dest, 0.32 * vel, 0.003);
+    osc('sine', f * 3.98, t, 0.12, dest, 0.07 * vel, 0.002);
+    osc('triangle', f * 2, t, 0.25, dest, 0.04 * vel, 0.002);
+  }
+  // glassy bell: inharmonic partials, long ring
+  function bell(f, t, vel, dest) {
+    osc('sine', f, t, 2.2, dest, 0.18 * vel, 0.002);
+    osc('sine', f * 2.76, t, 0.9, dest, 0.06 * vel, 0.002);
+    osc('sine', f * 5.4, t, 0.35, dest, 0.025 * vel, 0.002);
+  }
+  // music box: pure tone with a sparkle overtone
+  function musicBox(f, t, vel, dest) {
+    osc('sine', f, t, 1.6, dest, 0.12 * vel, 0.003);
+    osc('sine', f * 2, t, 0.5, dest, 0.03 * vel, 0.003);
+  }
+  function woodblock(f, t, vel, dest) {
+    osc('sine', f, t, 0.12, dest, 0.3 * vel, 0.001);
+    osc('triangle', f * 2.3, t, 0.05, dest, 0.08 * vel, 0.001);
+  }
+  function softNoise(t, dur, freq, q, vel, dest, type) {
+    const n = Math.floor(ac.sampleRate * dur), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.5);
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = b; f.type = type || 'bandpass'; f.frequency.value = freq; f.Q.value = q; g.gain.value = vel;
+    s.connect(f).connect(g).connect(dest); s.start(t);
+  }
+
+  // ---------- music ----------
+  // gentle I – vi – IV – V(6) in C, two bars each, about 66 bpm
+  const CHORDS = [
+    { root: 48, notes: [52, 55, 59, 62] },   // Cmaj9 (no root in pad)
+    { root: 45, notes: [52, 55, 60, 64] },   // Am7
+    { root: 41, notes: [52, 57, 60, 64] },   // Fmaj7
+    { root: 43, notes: [50, 55, 59, 64] },   // G6
+  ];
+  const BEAT = 60 / 66, BAR = BEAT * 4, CHORD_LEN = BAR * 2;
+  let schedTimer = null, nextChordT = 0, chordIdx = 0, nextNoteT = 0, melStep = 7, playing = false;
+
+  function pad(ch, t, len) {
+    const g = ac.createGain(), f = ac.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 900; f.Q.value = 0.3;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 1.8);
+    g.gain.setValueAtTime(0.06, t + len - 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len + 2.2);
+    f.connect(g).connect(musicGain);
+    for (const m of ch.notes) for (const det of [-5, 5]) {
+      const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = midi(m); o.detune.value = det;
+      o.connect(f); o.start(t); o.stop(t + len + 2.4);
+    }
+    // warm bass: a soft sine on each bar
+    for (let b = 0; b < 2; b++) {
+      const tb = t + b * BAR;
+      const o = ac.createOscillator(), bg = ac.createGain();
+      o.type = 'sine'; o.frequency.value = midi(ch.root - 12 + 12);
+      bg.gain.setValueAtTime(0.0001, tb); bg.gain.exponentialRampToValueAtTime(0.12, tb + 0.08); bg.gain.exponentialRampToValueAtTime(0.0001, tb + BAR * 0.95);
+      o.connect(bg).connect(musicGain); o.start(tb); o.stop(tb + BAR);
+    }
+  }
+  function schedule() {
+    const ahead = ac.currentTime + 0.6;
+    while (nextChordT < ahead) {
+      pad(CHORDS[chordIdx], nextChordT, CHORD_LEN);
+      nextChordT += CHORD_LEN; chordIdx = (chordIdx + 1) % CHORDS.length;
+    }
+    // sparse music-box melody on eighth-note slots
+    while (nextNoteT < ahead) {
+      const slot = Math.round((nextNoteT % BAR) / (BEAT / 2));
+      const strong = slot % 4 === 0;
+      if (Math.random() < (strong ? 0.42 : 0.16)) {
+        const r = Math.random();
+        melStep += r < 0.35 ? -1 : r < 0.7 ? 1 : r < 0.82 ? -2 : r < 0.94 ? 2 : 0;
+        melStep = Math.max(3, Math.min(13, melStep));
+        musicBox(midi(pentaNote(melStep, 60)), nextNoteT, strong ? 1 : 0.7, musicGain);
+      }
+      nextNoteT += BEAT / 2;
+    }
+  }
+  function startMusic() {
+    if (!ac || playing) return;
+    playing = true;
+    const t = ac.currentTime + 0.1;
+    nextChordT = t; nextNoteT = t + BAR; // let the pad breathe before the melody starts
+    musicGain.gain.cancelScheduledValues(ac.currentTime);
+    musicGain.gain.setValueAtTime(Math.max(0.0001, musicGain.gain.value), ac.currentTime);
+    musicGain.gain.linearRampToValueAtTime(ducked ? 0.45 : 0.75, ac.currentTime + 2.5);
+    schedule();
+    schedTimer = setInterval(schedule, 150);
+  }
+  function stopMusic() {
+    if (!ac || !playing) return;
+    playing = false; clearInterval(schedTimer);
+    musicGain.gain.cancelScheduledValues(ac.currentTime);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, ac.currentTime);
+    musicGain.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2);
+  }
+  function duck(on) {
+    ducked = on;
+    if (!ac || !playing) return;
+    musicGain.gain.cancelScheduledValues(ac.currentTime);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, ac.currentTime);
+    musicGain.gain.linearRampToValueAtTime(on ? 0.45 : 0.75, ac.currentTime + 0.8);
+  }
+
+  // ---------- effects ----------
+  let lastHitT = 0, dominoRun = 0, dominoT = 0;
+  const lastSnd = {};
+  function rate(name, ms) { const n = performance.now(); if (lastSnd[name] && n - lastSnd[name] < ms) return false; lastSnd[name] = n; return true; }
+
+  // y (0 top .. 12 bottom) → pentatonic step: higher on the board sounds higher
+  function heightStep(y, span) { return Math.round((1 - Math.max(0, Math.min(12, y)) / 12) * span); }
+
+  function hit(e) {
+    if (!sfxOn || !ac) return;
+    const t = ac.currentTime;
+    if (t - lastHitT < 0.035) return; lastHitT = t;
+    const vel = Math.max(0.15, Math.min(1, (e.v - 1) / 9));
+    const m = [e.a, e.b];
+    const has = k => m.includes(k);
+    if (has('tramp')) return;                       // trampoline has its own boing
+    if (has('balloon')) { marimba(midi(pentaNote(heightStep(e.y, 6) + 10, 60)), t, vel * 0.4, sfxGain); return; }
+    if (has('domino')) {
+      // falling dominoes climb the scale
+      if (t - dominoT > 1.2) dominoRun = 0;
+      dominoT = t;
+      woodblock(midi(pentaNote(4 + dominoRun++, 60)), t, 0.4 + vel * 0.5, sfxGain);
+      return;
+    }
+    if (has('metal')) { bell(midi(pentaNote(heightStep(e.y, 7) + 7, 60)), t, vel, sfxGain); return; }
+    if (has('rubber')) { marimba(midi(pentaNote(heightStep(e.y, 7) + 5, 60)), t, vel * 0.9, sfxGain); return; }
+    if (has('wood')) { marimba(midi(pentaNote(heightStep(e.y, 8), 60)), t, vel, sfxGain); return; }
+    // floor, bricks, ball on ball: low warm marimba plus a soft thud
+    marimba(midi(pentaNote(heightStep(e.y, 4), 48)), t, vel * 0.9, sfxGain);
+    if (has('heavy') && vel > 0.4) softNoise(t, 0.18, 140, 0.7, 0.35 * vel, sfxGain, 'lowpass');
+  }
+
+  function play(name, arg) {
+    if (!sfxOn || !wake()) return;
+    const t = ac.currentTime;
+    switch (name) {
+      case 'place': {
+        if (!rate('place', 60)) return;
+        woodblock(midi(67 + (arg || 0)), t, 0.55, sfxGain);
+        marimba(midi(79 + (arg || 0)), t + 0.04, 0.35, sfxGain);
+        break;
+      }
+      case 'remove': woodblock(midi(64), t, 0.45, sfxGain); woodblock(midi(57), t + 0.07, 0.35, sfxGain); break;
+      case 'turn': if (rate('turn', 50)) marimba(midi(72 + (arg || 0)), t, 0.4, sfxGain); break;
+      case 'nope': marimba(midi(57), t, 0.45, sfxGain); marimba(midi(55), t + 0.11, 0.4, sfxGain); break;
+      case 'pickup': if (rate('pickup', 60)) marimba(midi(74), t, 0.3, sfxGain); break;
+      case 'play': [60, 64, 67].forEach((m, i) => marimba(midi(m + 12), t + i * 0.06, 0.55, sfxGain)); break;
+      case 'stop': [67, 64, 60].forEach((m, i) => marimba(midi(m + 12), t + i * 0.05, 0.35, sfxGain)); break;
+      case 'pop': {
+        if (!rate('pop', 60)) return;
+        // bubbly plip + a little sparkle
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(500, t); o.frequency.exponentialRampToValueAtTime(1700, t + 0.07);
+        env(g, t, 0.002, 0.35, 0.12); o.connect(g).connect(sfxGain); o.start(t); o.stop(t + 0.2);
+        softNoise(t, 0.05, 3000, 1, 0.12, sfxGain);
+        [9, 11, 13].forEach((s, i) => bell(midi(pentaNote(s, 60)), t + 0.06 + i * 0.07, 0.55, sfxGain));
+        break;
+      }
+      case 'boing': {
+        if (!rate('boing', 90)) return;
+        const o = ac.createOscillator(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(380, t + 0.09); o.frequency.exponentialRampToValueAtTime(300, t + 0.45);
+        lfo.frequency.value = 17; lg.gain.setValueAtTime(40, t); lg.gain.exponentialRampToValueAtTime(1, t + 0.45);
+        lfo.connect(lg).connect(o.frequency);
+        env(g, t, 0.005, 0.3, 0.45); o.connect(g).connect(sfxGain);
+        o.start(t); lfo.start(t); o.stop(t + 0.55); lfo.stop(t + 0.55);
+        break;
+      }
+      case 'click': // button pressed: a bright two-bell "ding-ding"
+        bell(midi(79), t, 0.9, sfxGain); bell(midi(84), t + 0.12, 0.8, sfxGain);
+        break;
+      case 'boom': // cannon: soft round thump, not harsh
+        osc('sine', 110, t, 0.35, sfxGain, 0.5, 0.004).frequency.exponentialRampToValueAtTime(45, t + 0.3);
+        softNoise(t, 0.35, 380, 0.5, 0.45, sfxGain, 'lowpass');
+        softNoise(t + 0.02, 0.5, 900, 0.8, 0.06, sfxGain);
+        break;
+      case 'win': {
+        const seq = [0, 2, 4, 5, 7, 9, 10];
+        seq.forEach((s, i) => bell(midi(pentaNote(s, 60)), t + i * 0.09, 0.85, sfxGain));
+        [48, 55, 64, 67, 72].forEach(m => osc('triangle', midi(m), t + 0.5, 2.2, sfxGain, 0.04, 0.4));
+        break;
+      }
+      case 'menu': marimba(midi(72), t, 0.3, sfxGain); break;
+    }
+  }
+
+  // fans: soft wind that follows how many fans are blowing
+  function wind(n) {
+    if (!ac) return;
+    const target = sfxOn ? Math.min(0.22, n * 0.09) : 0;
+    windGain.gain.setTargetAtTime(target, ac.currentTime, 0.3);
+  }
+
+  const Sound = {
+    wake, play, hit, wind, duck,
+    setMusic(on) { musicOn = on; if (on) { if (wake()) startMusic(); } else stopMusic(); },
+    setSfx(on) { sfxOn = on; if (!on) wind(0); },
+    get musicOn() { return musicOn; }, get sfxOn() { return sfxOn; },
+  };
+  root.Sound = Sound;
+})(this);
+
+</script>
+<script>
 // Gizmo Lab — UI
 (function () {
   const { PARTS, COLS, ROWS, DT, Sim } = Core;
@@ -1166,39 +1483,15 @@ body.running .tile { opacity: .55; }
   const isSandbox = () => S.idx === -1;
 
   // ---------- sound ----------
-  let ac = null;
-  function audio() {
-    if (saved.muted) return null;
-    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
-    if (ac.state === 'suspended') ac.resume();
-    return ac;
-  }
-  function tone(type, f0, f1, dur, vol) {
-    const a = audio(); if (!a) return;
-    const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
-    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
-  }
-  function noise(dur, freq, vol, kind) {
-    const a = audio(); if (!a) return;
-    const n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
-    const src = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain();
-    src.buffer = buf; fl.type = kind; fl.frequency.value = freq; g.gain.value = vol;
-    src.connect(fl).connect(g).connect(a.destination); src.start();
-  }
-  const lastSnd = {};
-  function sfx(name) {
-    const now = performance.now(); if (lastSnd[name] && now - lastSnd[name] < 70) return; lastSnd[name] = now;
-    if (name === 'pop') noise(0.12, 1800, 0.6, 'highpass');
-    else if (name === 'boing') tone('sine', 180, 520, 0.28, 0.25);
-    else if (name === 'click') tone('square', 1200, 700, 0.06, 0.08);
-    else if (name === 'boom') { noise(0.5, 400, 0.9, 'lowpass'); tone('sine', 90, 40, 0.3, 0.3); }
-    else if (name === 'place') tone('triangle', 520, 380, 0.07, 0.12);
-    else if (name === 'nope') tone('square', 160, 120, 0.12, 0.06);
-    else if (name === 'win') [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone('triangle', f, f, 0.22, 0.18), i * 110));
-  }
+  if (saved.music === undefined) saved.music = true;
+  if (saved.sfx === undefined) saved.sfx = !saved.muted;
+  Sound.setSfx(saved.sfx);
+  Sound.setMusic(false);
+  function audio() { const ok = Sound.wake(); if (ok && saved.music && !audio.started) { audio.started = true; Sound.setMusic(true); } return ok; }
+  const PITCH = { ball: 0, bball: 2, balloon: 4, plank: 7, brick: -5, seesaw: 9, trampoline: 12, conveyor: -3, fan: 4, domino: 2, pin: 14, pulley: -8, button: 7, cannon: -5, basket: 0 };
+  function sfx(name, arg) { Sound.play(name, arg); }
+  document.addEventListener('pointerdown', () => audio(), { capture: true });
+  document.addEventListener('keydown', () => audio(), { capture: true });
 
   // ---------- level loading ----------
   function trayDef() { return isSandbox() ? SANDBOX_TRAY : S.level.tray; }
@@ -1341,6 +1634,7 @@ body.running .tile { opacity: .55; }
           started = true;
           const p = { id: 'u' + (S.uid++), type, x: 0, y: 0, a: type === 'cannon' ? 30 : 0, f: 1 };
           S.drag = { part: p, fromTray: true, off: { x: 0, y: touch ? -1.1 : 0 }, valid: false };
+          sfx('pickup');
           select(null);
         } else return;
       }
@@ -1365,13 +1659,13 @@ body.running .tile { opacity: .55; }
   function dragEnd(e, cancelled) {
     const d = S.drag; S.drag = null; if (!d) return;
     if (d.fromTray) {
-      if (!cancelled && d.valid) { S.placed.push(d.part); sfx('place'); select(d.part.id); saveLayout(); }
+      if (!cancelled && d.valid) { S.placed.push(d.part); sfx('place', PITCH[d.part.type] || 0); select(d.part.id); saveLayout(); }
       else if (!d.overTray && !cancelled) { sfx('nope'); toast("That spot is taken. Try somewhere with room."); }
     } else {
       const p = S.placed.find(q => q.id === d.part.id);
       if (d.overTray && !cancelled) { removePart(p.id); return; }
       if (!d.moved) { select(p.id); return; }
-      if (!cancelled && d.valid) { p.x = d.part.x; p.y = d.part.y; sfx('place'); saveLayout(); }
+      if (!cancelled && d.valid) { p.x = d.part.x; p.y = d.part.y; sfx('place', PITCH[p.type] || 0); saveLayout(); }
       else if (!cancelled) { sfx('nope'); }
       select(p.id);
     }
@@ -1392,6 +1686,7 @@ body.running .tile { opacity: .55; }
     const move = ev => {
       if (!S.drag) return;
       if (!S.drag.moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+      if (!S.drag.moved) sfx('pickup');
       dragMove(ev);
     };
     const up = ev => {
@@ -1436,8 +1731,8 @@ body.running .tile { opacity: .55; }
       let ok = false;
       for (const [dx, dy] of tries) { const q = Core.snap({ ...p, x: p.x + dx, y: p.y + dy }); if (!problem(q)) { p.x = q.x; p.y = q.y; ok = true; break; } }
       if (!ok) { Object.assign(p, before); sfx('nope'); toast('No room to turn it here.'); }
-      else sfx('place');
-    } else sfx('place');
+      else sfx('turn', ((p.a || 0) / 15) % 12);
+    } else sfx('turn', ((p.a || 0) / 15) % 12);
     saveLayout(); placeTools();
   }
   $('#turnBtn').addEventListener('click', () => tryChange(p => {
@@ -1450,7 +1745,7 @@ body.running .tile { opacity: .55; }
   $('#delBtn').addEventListener('click', () => { if (S.sel) removePart(S.sel); });
   function removePart(id) {
     S.placed = S.placed.filter(p => p.id !== id);
-    select(null); saveLayout(); renderTray(); sfx('click');
+    select(null); saveLayout(); renderTray(); sfx('remove');
   }
 
   // ---------- run ----------
@@ -1458,9 +1753,11 @@ body.running .tile { opacity: .55; }
     select(null);
     S.sim = new Sim(allParts());
     S.mode = 'run'; S.acc = 0; S.runT = 0; S.winShown = false; S.fx = [];
+    sfx('play'); Sound.duck(true);
     renderHeader();
   }
   function stopRun() {
+    if (S.mode === 'run') { sfx('stop'); Sound.duck(false); Sound.wind(0); }
     S.sim = null; S.mode = 'edit'; S.fx = [];
     $('#win').hidden = true;
     if (S.level || isSandbox()) renderHeader();
@@ -1478,6 +1775,7 @@ body.running .tile { opacity: .55; }
         for (let i = 0; i < 7; i++) S.fx.push({ k: 'puff', x: e.x, y: e.y, vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 1.5, life: 1, r: 0.2 + Math.random() * 0.2 });
       } else if (e.type === 'boing') sfx('boing');
       else if (e.type === 'click') { sfx('click'); S.fx.push({ k: 'ring', x: e.x, y: e.y, life: 1 }); }
+      else if (e.type === 'hit') Sound.hit(e);
     }
   }
   function onWin() {
@@ -1511,12 +1809,17 @@ body.running .tile { opacity: .55; }
   $('#clearBtn').addEventListener('click', () => {
     if (S.mode === 'run') stopRun();
     if (!S.placed.length) { toast('Nothing to clear yet.'); return; }
-    if (Date.now() - clearArm < 2500) { S.placed = []; clearArm = 0; $('#clearBtn').textContent = 'Clear'; select(null); saveLayout(); renderTray(); sfx('click'); return; }
+    if (Date.now() - clearArm < 2500) { S.placed = []; clearArm = 0; $('#clearBtn').textContent = 'Clear'; select(null); saveLayout(); renderTray(); sfx('remove'); return; }
     clearArm = Date.now(); $('#clearBtn').textContent = 'Sure?';
     setTimeout(() => { $('#clearBtn').textContent = 'Clear'; }, 2500);
   });
-  function renderSound() { $('#soundBtn').textContent = saved.muted ? 'Sound off' : 'Sound on'; $('#soundBtn').setAttribute('aria-pressed', String(!saved.muted)); }
-  $('#soundBtn').addEventListener('click', () => { saved.muted = !saved.muted; persist(); renderSound(); });
+  function renderSound() {
+    const m = $('#musicBtn'), s = $('#soundBtn');
+    m.setAttribute('aria-pressed', String(saved.music)); s.setAttribute('aria-pressed', String(saved.sfx));
+    m.title = saved.music ? 'Music on' : 'Music off'; s.title = saved.sfx ? 'Sounds on' : 'Sounds off';
+  }
+  $('#musicBtn').addEventListener('click', () => { saved.music = !saved.music; persist(); audio.started = true; Sound.setMusic(saved.music); renderSound(); });
+  $('#soundBtn').addEventListener('click', () => { saved.sfx = !saved.sfx; persist(); Sound.setSfx(saved.sfx); renderSound(); if (saved.sfx) sfx('turn', 0); });
 
   // ---------- menu ----------
   function renderMenu() {
@@ -1533,7 +1836,7 @@ body.running .tile { opacity: .55; }
     f.addEventListener('click', () => loadLevel(-1));
     g.appendChild(f);
   }
-  $('#menuBtn').addEventListener('click', () => { renderMenu(); $('#menu').hidden = false; });
+  $('#menuBtn').addEventListener('click', () => { renderMenu(); $('#menu').hidden = false; sfx('menu'); });
   $('#menuClose').addEventListener('click', () => { $('#menu').hidden = true; });
 
   // ---------- drawing ----------
@@ -1571,6 +1874,8 @@ body.running .tile { opacity: .55; }
       if (n === 4) S.acc = 0;
       S.runT += dt;
       handleEvents();
+      let fans = 0; for (const p of S.sim.parts) if (p.type === 'fan' && S.sim.rt[p.id].on) fans++;
+      Sound.wind(fans);
     }
     // particles
     for (const f of S.fx) { f.life -= dt * (f.k === 'ring' ? 2.5 : 1.1); if (f.vx !== undefined) { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += (f.k === 'puff' ? -0.5 : 9) * dt; } }
