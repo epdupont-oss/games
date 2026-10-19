@@ -52,6 +52,30 @@ const APPS = [
     icon: "🐂",
     color: "#8a5a2b",
   },
+  {
+    name: "Gizmo Lab",
+    link: "apps/gizmo-lab/index.html",
+    icon: "⚙️",
+    color: "#2d6cdf",
+  },
+  {
+    name: "Silverball Arcade",
+    link: "apps/silverball-arcade/index.html",
+    icon: "🪩",
+    color: "#7a1fa2",
+  },
+  {
+    name: "Maze Dash",
+    link: "apps/maze-dash/index.html",
+    icon: "🌀",
+    color: "#00a884",
+  },
+  {
+    name: "Frostbeast Slopes",
+    link: "apps/frostbeast-slopes/index.html",
+    icon: "🏂",
+    color: "#5fb6e8",
+  },
 
   // {
   //   name: "My Next App",

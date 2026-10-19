@@ -3,6 +3,7 @@
 //   <script src="../../home-button.js"></script>
 (function () {
   var a = document.createElement("a");
+  a.id = "home-btn";
   a.href = "../../index.html";
   a.setAttribute("aria-label", "Back to all apps");
   a.title = "Back to all apps";

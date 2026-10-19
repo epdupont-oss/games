@@ -1,0 +1,1644 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Gizmo Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: one-screen workshop — ink header bar, pegboard stage that scales to fit, wooden parts shelf at the bottom. */
+:root {
+  --ink: #1d2838;          /* header + text on light */
+  --ink-2: #2a3850;
+  --peg: #3c6e86;          /* pegboard */
+  --peg-deep: #24485a;
+  --shelf: #c48a4c;        /* wooden shelf */
+  --shelf-edge: #8e5a28;
+  --paper: #fbf6ec;        /* tiles, cards */
+  --spark: #ffd23f;        /* play / power accent */
+  --stop: #e8333a;
+  --good: #3fbf6a;
+  --muted: #9fb3c4;
+  --font-display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--peg-deep); color: #fff; font-family: var(--font-body);
+  overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ink); }
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button:focus-visible { outline: 3px solid var(--spark); outline-offset: 2px; }
+#app { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+
+/* header */
+.bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--ink); padding-block: 8px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-shadow: 0 2px 0 rgba(0,0,0,.25); z-index: 2;
+}
+.brand { font-family: var(--font-display); font-size: 22px; letter-spacing: .5px; color: var(--spark); white-space: nowrap; }
+.goal { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.goal .row { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+#lvlNum { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 800; white-space: nowrap; }
+#lvlName { font-family: var(--font-display); font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#goalText { font-size: 15px; font-weight: 700; color: #e6eef5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip, .ghost {
+  border: 0; border-radius: 12px; padding: 9px 13px; font-weight: 800; font-size: 14px;
+  background: var(--ink-2); color: #fff; white-space: nowrap;
+}
+.chip { background: var(--spark); color: var(--ink); font-family: var(--font-display); font-weight: 400; font-size: 17px; letter-spacing: .3px; }
+.ghost:active, .chip:active { transform: translateY(1px); }
+.play {
+  border: 0; border-radius: 16px; min-width: 108px; padding: 10px 18px;
+  font-family: var(--font-display); font-size: 22px; letter-spacing: .5px;
+  background: var(--good); color: #fff; box-shadow: 0 4px 0 #2b8a4b;
+}
+.play::before { content: ""; display: inline-block; width: 0; height: 0; margin-right: 9px; vertical-align: 1px;
+  border-left: 14px solid #fff; border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
+.play.stop { background: var(--stop); box-shadow: 0 4px 0 #a51f25; }
+.play.stop::before { border: 0; width: 13px; height: 13px; background: #fff; border-radius: 2px; }
+.play:active { transform: translateY(3px); box-shadow: 0 1px 0 #2b8a4b; }
+
+/* stage */
+#stage { position: relative; min-height: 0; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #2d5a6f 0%, var(--peg-deep) 75%); }
+#cv { display: block; border-radius: 10px; box-shadow: 0 0 0 4px #1b3644, 0 10px 30px rgba(0,0,0,.35); touch-action: none; }
+body.running #cv { box-shadow: 0 0 0 4px var(--good), 0 10px 30px rgba(0,0,0,.35); }
+#tools { position: absolute; left: 0; top: 0; display: flex; gap: 6px; padding: 6px; border-radius: 14px; background: var(--ink); box-shadow: 0 6px 18px rgba(0,0,0,.35); z-index: 3; }
+#tools button { border: 0; border-radius: 10px; background: var(--ink-2); padding: 8px 12px; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+#tools button svg { width: 18px; height: 18px; }
+#tools #delBtn { background: #4a2430; }
+#toast { position: absolute; left: 50%; bottom: 14px; transform: translate(-50%, 20px); opacity: 0; transition: .25s; pointer-events: none;
+  background: var(--paper); color: var(--ink); font-weight: 800; padding: 9px 16px; border-radius: 999px; max-width: calc(100% - 32px); text-align: center; box-shadow: 0 6px 16px rgba(0,0,0,.3); }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* shelf */
+#tray {
+  display: flex; gap: 10px; overflow-x: auto; touch-action: pan-x; scrollbar-width: none;
+  background: linear-gradient(var(--shelf), #b57b3f); border-top: 5px solid var(--shelf-edge);
+  padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-shadow: inset 0 3px 0 rgba(255,255,255,.18);
+}
+#tray::-webkit-scrollbar { display: none; }
+.tile { position: relative; flex: 0 0 auto; width: 92px; border: 0; border-radius: 14px; padding: 6px 6px 7px;
+  background: var(--paper); color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 2px;
+  box-shadow: 0 4px 0 rgba(80,45,10,.45); touch-action: pan-x; }
+.tile .icon { width: 64px; height: 48px; pointer-events: none; }
+.tile .name { font-size: 12px; font-weight: 800; line-height: 1.1; text-align: center; pointer-events: none; }
+.tile .count { position: absolute; top: -6px; right: -6px; background: var(--ink); color: var(--spark); font-weight: 800; font-size: 13px;
+  border-radius: 999px; padding: 2px 8px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.tile:disabled { opacity: .38; cursor: default; }
+#tray.many { gap: 7px; }
+#tray.many .tile { width: 68px; padding: 5px 4px 6px; }
+#tray.many .tile .icon { width: 52px; height: 39px; }
+#tray.many .tile .name { font-size: 11px; }
+.tile:disabled .count { color: #fff; }
+body.running .tile { opacity: .55; }
+.empty { color: var(--ink); font-weight: 800; margin: 12px 0; }
+
+/* overlays */
+.overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(16, 24, 36, .62);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.card { background: var(--paper); color: var(--ink); border-radius: 22px; padding: 22px; width: min(760px, 100%); max-height: calc(100% - 40px); overflow: auto; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+.card h2 { font-family: var(--font-display); font-weight: 400; font-size: 30px; margin: 0 0 4px; letter-spacing: .3px; text-wrap: balance; }
+.card p.sub { margin: 0 0 16px; font-weight: 700; color: #5a6578; }
+.card .head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.x { border: 0; background: #e9e1d0; border-radius: 12px; padding: 8px 14px; font-weight: 800; color: var(--ink); }
+#levelGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.lvl { position: relative; border: 0; text-align: left; border-radius: 16px; padding: 12px 12px 14px; min-height: 112px;
+  background: #fff; box-shadow: 0 0 0 2px #e6dcc8, 0 4px 0 #e6dcc8; display: flex; flex-direction: column; gap: 4px; color: var(--ink); }
+.lvl .n { font-family: var(--font-display); font-size: 26px; color: var(--peg); line-height: 1; }
+.lvl .t { font-family: var(--font-display); font-size: 18px; }
+.lvl .g { font-size: 13px; font-weight: 700; color: #5a6578; }
+.lvl .ok { position: absolute; top: 10px; right: 10px; background: var(--good); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .06em; }
+.lvl.current { box-shadow: 0 0 0 3px var(--peg), 0 4px 0 var(--peg); }
+.lvl.free { background: var(--ink); color: #fff; box-shadow: 0 4px 0 #0e1520; }
+.lvl.free .n { color: var(--spark); } .lvl.free .g { color: var(--muted); }
+#win .card { width: min(420px, 100%); text-align: center; }
+#win .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+.big { border: 0; border-radius: 16px; padding: 12px 20px; font-family: var(--font-display); font-size: 20px; background: var(--good); color: #fff; box-shadow: 0 4px 0 #2b8a4b; }
+.big.alt { background: #e9e1d0; color: var(--ink); box-shadow: 0 4px 0 #cdbf9f; }
+.medal { width: 84px; height: 84px; margin: 0 auto 8px; border-radius: 50%; background: var(--spark); display: grid; place-items: center; box-shadow: 0 5px 0 #d8a90b; }
+.medal svg { width: 48px; height: 48px; }
+
+@media (max-width: 760px) {
+  .brand { display: none; }
+  #goalText { font-size: 13px; }
+  .bar { gap: 6px; flex-wrap: wrap; }
+  .goal { order: 5; flex-basis: 100%; }
+  .play { min-width: 0; font-size: 18px; padding: 8px 14px; margin-left: auto; }
+  .ghost, .chip { padding: 8px 10px; font-size: 13px; }
+  .tile { width: 78px; }
+}
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+
+<div id="app">
+  <header class="bar">
+    <a class="ghost" href="../../index.html" aria-label="Back to all apps" title="Back to all apps" style="text-decoration:none;display:inline-flex;align-items:center"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></a>
+    <span class="brand">Gizmo Lab</span>
+    <button id="menuBtn" class="chip" type="button">Puzzles</button>
+    <div class="goal">
+      <div class="row"><span id="lvlNum"></span><span id="lvlName"></span></div>
+      <span id="goalText"></span>
+    </div>
+    <button id="hintBtn" class="ghost" type="button">Hint</button>
+    <button id="soundBtn" class="ghost" type="button">Sound on</button>
+    <button id="clearBtn" class="ghost" type="button">Clear</button>
+    <button id="playBtn" class="play" type="button">Play</button>
+  </header>
+  <main id="stage">
+    <canvas id="cv" aria-label="Contraption board"></canvas>
+    <div id="tools" hidden>
+      <button id="turnBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>Turn</button>
+      <button id="flipBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3"/><path d="M20 16H6l3 3"/></svg>Flip</button>
+      <button id="delBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14"/><path d="M9 7V5h6v2"/><path d="M7 7l1 13h8l1-13"/></svg>Remove</button>
+    </div>
+    <div id="toast" role="status"></div>
+  </main>
+  <footer id="tray" aria-label="Parts shelf"></footer>
+</div>
+
+<div id="menu" class="overlay" hidden>
+  <div class="card">
+    <div class="head"><div><h2>Puzzles</h2><p class="sub">Pick a puzzle, or build anything you like in the free workshop.</p></div><button id="menuClose" class="x" type="button">Close</button></div>
+    <div id="levelGrid"></div>
+  </div>
+</div>
+
+<div id="win" class="overlay" hidden>
+  <div class="card">
+    <div class="medal"><svg viewBox="0 0 24 24" fill="none" stroke="#1d2838" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h2 id="winMsg">Solved!</h2>
+    <p class="sub">Your machine worked.</p>
+    <div class="actions">
+      <button id="againBtn" class="big alt" type="button">Keep watching</button>
+      <button id="nextBtn" class="big" type="button">Next puzzle</button>
+      <button id="winFree" class="big" type="button">Free build</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/planck@1.5.0/dist/planck.min.js"></script>
+<script>
+// Gizmo Lab — physics core (runs in browser and in node for tests)
+(function (root) {
+  const pl = (typeof planck !== 'undefined') ? planck : require('planck');
+  const { Vec2 } = pl;
+
+  const COLS = 22, ROWS = 12, GRAV = 24, DT = 1 / 60;
+  const D2R = Math.PI / 180;
+
+  // ---------- geometry helpers ----------
+  function xform(p, lx, ly) {
+    // local -> world for part p (flip mirrors x, then rotate by p.a degrees)
+    const f = p.f || 1, a = (p.a || 0) * D2R;
+    const x = lx * f, y = ly;
+    const c = Math.cos(a), s = Math.sin(a);
+    return [p.x + x * c - y * s, p.y + x * s + y * c];
+  }
+  function rectPts(cx, cy, w, h) {
+    return [[cx - w / 2, cy - h / 2], [cx + w / 2, cy - h / 2], [cx + w / 2, cy + h / 2], [cx - w / 2, cy + h / 2]];
+  }
+  // footprint item in local coords -> world
+  function fpWorld(p, item) {
+    if (item.r) return { c: xform(p, item.c[0], item.c[1]), r: item.r };
+    return { pts: item.pts.map(q => xform(p, q[0], q[1])) };
+  }
+
+  // ---------- part catalogue ----------
+  // rot: 'none' | 'free' (15° steps) | 'quarter' (90° steps) | 'aim' (cannon 0..75 up)
+  const PARTS = {
+    ball: {
+      name: 'Bowling ball', tip: 'Heavy and steady. Knocks things over.',
+      rot: 'none', flip: false,
+      fp: () => [{ c: [0, 0], r: 0.45 }],
+    },
+    bball: {
+      name: 'Bouncy ball', tip: 'Light and very bouncy.',
+      rot: 'none', flip: false,
+      fp: () => [{ c: [0, 0], r: 0.4 }],
+    },
+    balloon: {
+      name: 'Balloon', tip: 'Floats up. Pops on a pin or a cannonball.',
+      rot: 'none', flip: false,
+      fp: () => [{ c: [0, 0], r: 0.45 }],
+    },
+    plank: {
+      name: 'Plank', tip: 'A ramp. Turn it to any angle.',
+      rot: 'free', flip: false,
+      fp: () => [{ pts: rectPts(0, 0, 3, 0.25) }],
+    },
+    brick: {
+      name: 'Brick', tip: 'A solid block.',
+      rot: 'none', flip: false,
+      fp: () => [{ pts: rectPts(0, 0, 1, 1) }],
+    },
+    seesaw: {
+      name: 'See-saw', tip: 'Drop something heavy on one end to fling the other.',
+      rot: 'none', flip: false,
+      fp: () => [{ pts: rectPts(0, -0.3, 4, 0.2) }, { pts: [[-0.5, 0.5], [0.5, 0.5], [0, -0.2]] }],
+    },
+    trampoline: {
+      name: 'Trampoline', tip: 'Boing! Sends things back up.',
+      rot: 'none', flip: false,
+      fp: () => [{ pts: rectPts(0, 0, 2, 0.5) }],
+    },
+    conveyor: {
+      name: 'Conveyor belt', tip: 'Carries things along. Flip to change direction.',
+      rot: 'none', flip: true, powered: true,
+      fp: () => [{ pts: rectPts(0, 0, 4, 0.5) }],
+    },
+    fan: {
+      name: 'Fan', tip: 'Blows light things away. Turn it to aim.',
+      rot: 'quarter', flip: false, powered: true,
+      fp: () => [{ pts: rectPts(0, 0, 1, 1) }],
+    },
+    domino: {
+      name: 'Domino', tip: 'Tips over and knocks the next one.',
+      rot: 'none', flip: false,
+      fp: () => [{ pts: rectPts(0, 0, 0.25, 1.2) }],
+    },
+    pin: {
+      name: 'Pin', tip: 'Sharp! Pops balloons.',
+      rot: 'quarter', flip: false,
+      fp: () => [{ pts: [[-0.25, 0.5], [0.25, 0.5], [0, -0.4]] }],
+    },
+    pulley: {
+      name: 'Pulley buckets', tip: 'Weight in one bucket lifts the other.',
+      rot: 'none', flip: false,
+      fp: () => [{ pts: rectPts(-2.0, -2.05, 0.6, 0.6) }, { pts: rectPts(2.0, -2.05, 0.6, 0.6) }, { pts: rectPts(-1.25, 1.1, 1.5, 1.1) }, { pts: rectPts(1.25, 1.1, 1.5, 1.1) }],
+    },
+    button: {
+      name: 'Button', tip: 'When something presses it, machines that wait for power switch on.',
+      rot: 'quarter', flip: false,
+      fp: () => [{ pts: rectPts(0, 0.15, 1.2, 0.3) }, { pts: rectPts(0, -0.1, 0.8, 0.2) }],
+    },
+    cannon: {
+      name: 'Cannon', tip: 'Fires a cannonball. Waits for a button if there is one.',
+      rot: 'aim', flip: true, powered: true,
+      fp: () => [{ pts: rectPts(0, 0.15, 1.2, 0.7) }],
+    },
+    basket: {
+      name: 'Basket', tip: 'Goal: land a ball in here.',
+      rot: 'none', flip: false,
+      fp: () => [{ pts: rectPts(0, 0, 1.6, 1.1) }],
+    },
+  };
+
+  function footprint(p) {
+    const def = PARTS[p.type];
+    // cannon footprint ignores barrel angle; others rotate with the part
+    if (p.type === 'cannon') return def.fp().map(it => fpWorld({ x: p.x, y: p.y, f: p.f, a: 0 }, it));
+    return def.fp().map(it => fpWorld(p, it));
+  }
+  function aabb(items) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const it of items) {
+      if (it.r) { x0 = Math.min(x0, it.c[0] - it.r); x1 = Math.max(x1, it.c[0] + it.r); y0 = Math.min(y0, it.c[1] - it.r); y1 = Math.max(y1, it.c[1] + it.r); }
+      else for (const q of it.pts) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+    }
+    return { x0, y0, x1, y1 };
+  }
+  // snap so the footprint's left and bottom edges sit on a half-cell grid
+  function snap(p) {
+    const q = { ...p, x: 0, y: 0 };
+    const items = footprint(q);
+    const b = aabb(items);
+    const round = v => Math.round(v * 2) / 2;
+    const x = round(p.x);
+    const upright = ((p.a || 0) % 180) === 0 && !items[0].r;
+    const y = upright ? round(p.y + b.y1) - b.y1 : round(p.y);
+    return { ...p, x: +x.toFixed(3), y: +y.toFixed(3) };
+  }
+  // --- SAT overlap ---
+  function axesOf(pts) {
+    const ax = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const nx = -(b[1] - a[1]), ny = b[0] - a[0], l = Math.hypot(nx, ny);
+      ax.push([nx / l, ny / l]);
+    }
+    return ax;
+  }
+  function proj(pts, ax) { let lo = Infinity, hi = -Infinity; for (const q of pts) { const d = q[0] * ax[0] + q[1] * ax[1]; lo = Math.min(lo, d); hi = Math.max(hi, d); } return [lo, hi]; }
+  const TOL = 0.04;
+  function polyPoly(A, B) {
+    for (const ax of axesOf(A).concat(axesOf(B))) {
+      const [a0, a1] = proj(A, ax), [b0, b1] = proj(B, ax);
+      if (a1 - TOL <= b0 || b1 - TOL <= a0) return false;
+    }
+    return true;
+  }
+  function circPoly(c, r, P) {
+    // inside?
+    let inside = true;
+    const ax = axesOf(P);
+    // closest point on edges
+    let best = Infinity;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length];
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      let t = ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / (dx * dx + dy * dy);
+      t = Math.max(0, Math.min(1, t));
+      const d = Math.hypot(c[0] - a[0] - t * dx, c[1] - a[1] - t * dy);
+      best = Math.min(best, d);
+    }
+    // point in convex polygon test (winding independent)
+    let sign = 0;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length];
+      const cr = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+      if (cr !== 0) { if (sign === 0) sign = Math.sign(cr); else if (Math.sign(cr) !== sign) { inside = false; break; } }
+    }
+    return inside || best < r - TOL;
+  }
+  function itemsOverlap(a, b) {
+    if (a.r && b.r) return Math.hypot(a.c[0] - b.c[0], a.c[1] - b.c[1]) < a.r + b.r - TOL;
+    if (a.r) return circPoly(a.c, a.r, b.pts);
+    if (b.r) return circPoly(b.c, b.r, a.pts);
+    return polyPoly(a.pts, b.pts);
+  }
+  function partsOverlap(p, q) {
+    const A = footprint(p), B = footprint(q);
+    for (const a of A) for (const b of B) if (itemsOverlap(a, b)) return true;
+    return false;
+  }
+  function inBounds(p) {
+    const b = aabb(footprint(p));
+    return b.x0 >= -0.01 && b.y0 >= -0.01 && b.x1 <= COLS + 0.01 && b.y1 <= ROWS + 0.01;
+  }
+  // returns null if ok, else reason
+  function placementProblem(p, others) {
+    if (!inBounds(p)) return 'out';
+    for (const q of others) if (q.id !== p.id && partsOverlap(p, q)) return q.id;
+    return null;
+  }
+
+  // ---------- simulation ----------
+  const MATS = {
+    ball: { density: 4, friction: 0.4, restitution: 0.05 },
+    bball: { density: 0.6, friction: 0.5, restitution: 0.8 },
+    balloon: { density: 0.15, friction: 0.2, restitution: 0.3 },
+    cannonball: { density: 3, friction: 0.3, restitution: 0.1 },
+    wood: { density: 1, friction: 0.5, restitution: 0.05 },
+    domino: { density: 1.5, friction: 0.6, restitution: 0.02 },
+  };
+
+  function Sim(parts) {
+    this.parts = parts.map(p => ({ ...p }));
+    this.rt = {};          // part id -> runtime {bodies, ...}
+    this.extras = [];      // spawned cannonballs
+    this.t = 0; this.steps = 0;
+    this.power = false;
+    this.events = [];      // sounds/fx for the renderer: {type, x, y}
+    this.won = false; this.winHold = 0;
+    const w = this.world = new pl.World({ gravity: Vec2(0, GRAV) });
+    this.hasButton = this.parts.some(p => p.type === 'button');
+
+    // frame: floor, walls, ceiling
+    const frame = w.createBody();
+    const T = 1;
+    frame.createFixture(pl.Box(COLS / 2 + T, T / 2, Vec2(COLS / 2, ROWS + T / 2)), { friction: 0.6 });
+    frame.createFixture(pl.Box(COLS / 2 + T, T / 2, Vec2(COLS / 2, -T / 2)), { friction: 0.3 });
+    frame.createFixture(pl.Box(T / 2, ROWS / 2 + T, Vec2(-T / 2, ROWS / 2)), { friction: 0.3 });
+    frame.createFixture(pl.Box(T / 2, ROWS / 2 + T, Vec2(COLS + T / 2, ROWS / 2)), { friction: 0.3 });
+    frame.setUserData({ kind: 'frame' });
+    this.frame = frame;
+
+    for (const p of this.parts) this.build(p);
+    // fans need static geometry for their air stream length
+    for (const p of this.parts) if (p.type === 'fan') this.measureFan(p);
+
+    w.on('begin-contact', c => this.onBegin(c));
+    w.on('pre-solve', c => this.onPreSolve(c));
+  }
+
+  Sim.prototype.needsPower = function (p) {
+    if (!PARTS[p.type].powered) return false;
+    if (p.off) return true;
+    return !p.fixed && this.hasButton;
+  };
+
+  function polyShape(p, pts) { return pl.Polygon(pts.map(q => { const w = xform(p, q[0], q[1]); return Vec2(w[0], w[1]); })); }
+  function localPoly(pts) { return pl.Polygon(pts.map(q => Vec2(q[0], q[1]))); }
+
+  Sim.prototype.build = function (p) {
+    const w = this.world, rt = this.rt[p.id] = { bodies: {} };
+    const ud = (kind, extra) => Object.assign({ kind, part: p }, extra || {});
+    switch (p.type) {
+      case 'ball': case 'bball': case 'balloon': {
+        const r = p.type === 'bball' ? 0.4 : 0.45;
+        const b = w.createDynamicBody({ position: Vec2(p.x, p.y), bullet: p.type !== 'balloon' });
+        b.createFixture(pl.Circle(r), MATS[p.type]);
+        if (p.type === 'balloon') { b.setLinearDamping(1.0); b.setAngularDamping(2); b.setFixedRotation(true); }
+        b.setUserData(ud(p.type, { r }));
+        rt.bodies.main = b;
+        break;
+      }
+      case 'plank': case 'brick': {
+        const b = w.createBody();
+        const pts = p.type === 'plank' ? rectPts(0, 0, 3, 0.25) : rectPts(0, 0, 1, 1);
+        b.createFixture(polyShape(p, pts), MATS.wood);
+        b.setUserData(ud(p.type));
+        rt.bodies.main = b;
+        break;
+      }
+      case 'seesaw': {
+        const base = w.createBody();
+        base.createFixture(polyShape(p, [[-0.5, 0.5], [0.5, 0.5], [0, -0.2]]), MATS.wood);
+        base.setUserData(ud('seesawBase'));
+        const pv = xform(p, 0, -0.3);
+        const plank = w.createDynamicBody({ position: Vec2(pv[0], pv[1]) });
+        plank.createFixture(pl.Box(2, 0.1), { density: 1.2, friction: 0.6, restitution: 0.05 });
+        // little lips at each end keep a resting ball from rolling off
+        plank.createFixture(pl.Box(0.06, 0.16, Vec2(-1.94, -0.24), 0), { density: 1.2, friction: 0.6 });
+        plank.createFixture(pl.Box(0.06, 0.16, Vec2(1.94, -0.24), 0), { density: 1.2, friction: 0.6 });
+        plank.setUserData(ud('seesaw'));
+        w.createJoint(pl.RevoluteJoint({ enableLimit: true, lowerAngle: -28 * D2R, upperAngle: 28 * D2R }, base, plank, Vec2(pv[0], pv[1])));
+        rt.bodies.base = base; rt.bodies.plank = plank;
+        break;
+      }
+      case 'trampoline': {
+        const b = w.createBody();
+        b.createFixture(polyShape(p, rectPts(0, -0.1, 2, 0.2)), { friction: 0.4, restitution: 0.9 });
+        b.setUserData(ud('trampoline'));
+        rt.bodies.main = b;
+        break;
+      }
+      case 'conveyor': {
+        const b = w.createBody();
+        b.createFixture(polyShape(p, rectPts(0, 0, 4, 0.5)), { friction: 0.9 });
+        b.setUserData(ud('conveyor'));
+        rt.bodies.main = b; rt.on = !this.needsPower(p);
+        break;
+      }
+      case 'fan': {
+        const b = w.createBody();
+        b.createFixture(polyShape(p, rectPts(0, 0, 1, 1)), MATS.wood);
+        b.setUserData(ud('fan'));
+        rt.bodies.main = b; rt.on = !this.needsPower(p); rt.len = 8;
+        break;
+      }
+      case 'domino': {
+        const b = w.createDynamicBody({ position: Vec2(p.x, p.y) });
+        b.createFixture(pl.Box(0.125, 0.6), MATS.domino);
+        b.setUserData(ud('domino'));
+        rt.bodies.main = b;
+        break;
+      }
+      case 'pin': {
+        const b = w.createBody();
+        b.createFixture(polyShape(p, [[-0.25, 0.5], [0.25, 0.5], [0, -0.4]]), { friction: 0.3 });
+        b.setUserData(ud('pin', { sharp: true }));
+        rt.bodies.main = b;
+        break;
+      }
+      case 'pulley': {
+        const top = w.createBody();
+        // wheel housings double as stoppers for rising buckets
+        top.createFixture(polyShape(p, rectPts(-2.0, -2.05, 0.6, 0.6)), MATS.wood);
+        top.createFixture(polyShape(p, rectPts(2.0, -2.05, 0.6, 0.6)), MATS.wood);
+        top.setUserData(ud('pulleyTop'));
+        const mk = side => {
+          const c = xform(p, side * 1.25, 1.1);
+          const b = w.createDynamicBody({ position: Vec2(c[0], c[1]), fixedRotation: true });
+          const wl = 0.12, W = 1.4, H = 0.9;
+          b.createFixture(localPoly(rectPts(0, H / 2 - wl / 2, W, wl)), { density: 1, friction: 0.6 });
+          b.createFixture(localPoly(rectPts(-W / 2 + wl / 2, 0, wl, H)), { density: 1, friction: 0.6 });
+          b.createFixture(localPoly(rectPts(W / 2 - wl / 2, 0, wl, H)), { density: 1, friction: 0.6 });
+          b.setLinearDamping(0.4);
+          b.setUserData(ud('bucket'));
+          return b;
+        };
+        const A = mk(-1), B = mk(1);
+        const ga = xform(p, -2.0, -2.05), gb = xform(p, 2.0, -2.05);
+        const aa = A.getPosition(), ab = B.getPosition();
+        w.createJoint(pl.PulleyJoint({}, A, B, Vec2(ga[0], ga[1]), Vec2(gb[0], gb[1]), Vec2(aa.x - 0.65, aa.y - 0.45), Vec2(ab.x + 0.65, ab.y - 0.45), 1));
+        rt.bodies.top = top; rt.bodies.a = A; rt.bodies.b = B;
+        rt.ga = ga; rt.gb = gb;
+        break;
+      }
+      case 'button': {
+        const b = w.createBody();
+        b.createFixture(polyShape(p, rectPts(0, 0.15, 1.2, 0.3)), MATS.wood);
+        b.createFixture(polyShape(p, rectPts(0, -0.05, 0.8, 0.1)), MATS.wood);
+        b.createFixture(polyShape(p, rectPts(0, -0.25, 0.75, 0.32)), { isSensor: true });
+        b.setUserData(ud('button'));
+        rt.bodies.main = b; rt.pressed = false;
+        break;
+      }
+      case 'cannon': {
+        const b = w.createBody();
+        b.createFixture(polyShape({ x: p.x, y: p.y, f: p.f, a: 0 }, rectPts(0, 0.3, 1.2, 0.4)), MATS.wood);
+        b.setUserData(ud('cannon'));
+        rt.bodies.main = b; rt.fired = false; rt.armed = !this.needsPower(p);
+        break;
+      }
+      case 'basket': {
+        const b = w.createBody();
+        const W = 1.6, H = 1.1, wl = 0.14;
+        b.createFixture(polyShape(p, rectPts(0, H / 2 - wl / 2, W, wl)), MATS.wood);
+        b.createFixture(polyShape(p, rectPts(-W / 2 + wl / 2, 0, wl, H)), MATS.wood);
+        b.createFixture(polyShape(p, rectPts(W / 2 - wl / 2, 0, wl, H)), MATS.wood);
+        b.setUserData(ud('basket'));
+        rt.bodies.main = b; rt.hold = 0; rt.full = false;
+        break;
+      }
+    }
+  };
+
+  Sim.prototype.measureFan = function (p) {
+    const rt = this.rt[p.id];
+    const dir = [Math.cos((p.a || 0) * D2R), Math.sin((p.a || 0) * D2R)];
+    const start = Vec2(p.x + dir[0] * 0.55, p.y + dir[1] * 0.55);
+    const end = Vec2(p.x + dir[0] * 9, p.y + dir[1] * 9);
+    let frac = 1;
+    this.world.rayCast(start, end, (fx, pt, n, fr) => {
+      if (fx.isSensor() || fx.getBody().isDynamic()) return -1;
+      if (fx.getBody() === rt.bodies.main) return -1;
+      frac = Math.min(frac, fr); return fr;
+    });
+    rt.dir = dir; rt.len = Math.max(0.5, frac * 8.45);
+  };
+
+  function kindOf(f) { const u = f.getBody().getUserData(); return u ? u.kind : null; }
+
+  Sim.prototype.onBegin = function (c) {
+    const fa = c.getFixtureA(), fb = c.getFixtureB();
+    const ua = fa.getBody().getUserData() || {}, ub = fb.getBody().getUserData() || {};
+    const pair = (u1, f1, u2, f2) => {
+      // balloon popping
+      if (u1.kind === 'balloon' && !u1.popped && (u2.sharp)) { u1.popped = true; this.queuePop = (this.queuePop || []).concat([f1.getBody()]); }
+      // button press
+      if (u1.kind === 'button' && f1.isSensor() && f2.getBody().isDynamic()) {
+        const rt = this.rt[u1.part.id];
+        if (!rt.pressed) { rt.pressed = true; this.events.push({ type: 'click', x: u1.part.x, y: u1.part.y }); this.powerOn(); }
+      }
+      // trampoline boing
+      if (u1.kind === 'trampoline' && f2.getBody().isDynamic()) { (this.boing = this.boing || []).push(f2.getBody()); }
+    };
+    pair(ua, fa, ub, fb); pair(ub, fb, ua, fa);
+  };
+
+  Sim.prototype.onPreSolve = function (c) {
+    const fa = c.getFixtureA(), fb = c.getFixtureB();
+    const ua = fa.getBody().getUserData() || {}, ub = fb.getBody().getUserData() || {};
+    // baskets have a soft net: things land and stay
+    if (ua.kind === 'basket' || ub.kind === 'basket') c.setRestitution(0.1);
+    let conv = null, sign = 1;
+    if (ua.kind === 'conveyor') { conv = ua; sign = 1; } else if (ub.kind === 'conveyor') { conv = ub; sign = -1; }
+    if (!conv) return;
+    const rt = this.rt[conv.part.id];
+    if (!rt.on) return;
+    const other = (ua.kind === 'conveyor' ? fb : fa).getBody();
+    if (other.isDynamic()) { (this.onBelt = this.onBelt || new Map()).set(other, conv.part); }
+  };
+
+  Sim.prototype.powerOn = function () {
+    if (this.power) return; this.power = true;
+    for (let b = this.world.getBodyList(); b; b = b.getNext()) b.setAwake(true);
+    for (const p of this.parts) {
+      const rt = this.rt[p.id];
+      if (p.type === 'fan' || p.type === 'conveyor') rt.on = true;
+      if (p.type === 'cannon') rt.armed = true;
+    }
+  };
+
+  Sim.prototype.fireCannon = function (p) {
+    const rt = this.rt[p.id]; rt.fired = true; rt.flash = 12;
+    const f = p.f || 1, ang = -(p.a || 0) * D2R; // aim upward
+    const dir = [Math.cos(ang) * f, Math.sin(ang)];
+    const pivot = [p.x, p.y + 0.05];
+    const mz = [pivot[0] + dir[0] * 0.95, pivot[1] + dir[1] * 0.95];
+    const b = this.world.createDynamicBody({ position: Vec2(mz[0], mz[1]), bullet: true });
+    b.createFixture(pl.Circle(0.28), MATS.cannonball);
+    b.setLinearVelocity(Vec2(dir[0] * 16, dir[1] * 16));
+    b.setUserData({ kind: 'cannonball', sharp: true, r: 0.28 });
+    this.extras.push(b);
+    this.events.push({ type: 'boom', x: mz[0], y: mz[1] });
+  };
+
+  Sim.prototype.step = function () {
+    const w = this.world;
+    // continuous forces
+    for (const p of this.parts) {
+      const rt = this.rt[p.id];
+      if (p.type === 'balloon') {
+        const b = rt.bodies.main; if (!b) continue;
+        b.applyForceToCenter(Vec2(0, -b.getMass() * GRAV * 1.6), true);
+      } else if (p.type === 'fan' && rt.on) {
+        const [dx, dy] = rt.dir, L = rt.len;
+        for (let b = w.getBodyList(); b; b = b.getNext()) {
+          if (!b.isDynamic()) continue;
+          const u = b.getUserData() || {};
+          const q = b.getPosition();
+          const rx = q.x - p.x, ry = q.y - p.y;
+          const along = rx * dx + ry * dy, across = Math.abs(-rx * dy + ry * dx);
+          if (along < 0.4 || along > L + 0.5 || across > 0.75) continue;
+          const k = 1 - 0.55 * (along / Math.max(L, 1));
+          const size = u.r ? u.r * 2 : 1;
+          const F = 6 * k * size;
+          b.applyForceToCenter(Vec2(dx * F, dy * F), true);
+        }
+      } else if (p.type === 'cannon' && rt.armed && !rt.fired) {
+        rt.delay = (rt.delay || 0) + 1;
+        if (rt.delay > 20) this.fireCannon(p);
+      }
+    }
+    if (this.onBelt) {
+      for (const [b, cp] of this.onBelt) {
+        const v = b.getLinearVelocity(), want = 4 * (cp.f || 1);
+        const dv = Math.max(-2, Math.min(2, want - v.x));
+        b.applyLinearImpulse(Vec2(b.getMass() * dv * 0.35, 0), b.getWorldCenter(), true);
+        if (b.getAngularVelocity) b.setAngularVelocity(b.getAngularVelocity() * 0.8);
+      }
+      this.onBelt = null;
+    }
+    w.step(DT, 8, 3);
+    this.t += DT; this.steps++;
+    // post-step queued effects
+    if (this.boing) {
+      for (const b of this.boing) {
+        const v = b.getLinearVelocity();
+        if (v.y < 0 && v.y > -9) b.setLinearVelocity(Vec2(v.x, -9));
+        const q = b.getPosition(); this.events.push({ type: 'boing', x: q.x, y: q.y });
+      }
+      this.boing = null;
+    }
+    if (this.queuePop) {
+      for (const b of this.queuePop) {
+        const u = b.getUserData(); const q = b.getPosition();
+        this.events.push({ type: 'pop', x: q.x, y: q.y });
+        w.destroyBody(b);
+        this.rt[u.part.id].bodies.main = null; this.rt[u.part.id].popped = true;
+      }
+      this.queuePop = null;
+    }
+    for (const p of this.parts) { const rt = this.rt[p.id]; if (rt.flash) rt.flash--; }
+  };
+
+  // ---------- goals ----------
+  // goals: [{type:'basket', ball?:'ball'|'bball'|'any'}, {type:'pop'}, {type:'press'}, {type:'topple'}]
+  Sim.prototype.goalState = function (goals) {
+    const res = [];
+    for (const g of goals) {
+      let ok = false;
+      if (g.type === 'basket') {
+        ok = this.parts.filter(p => p.type === 'basket').every(bp => {
+          const rt = this.rt[bp.id];
+          let inside = false;
+          for (let b = this.world.getBodyList(); b; b = b.getNext()) {
+            if (!b.isDynamic()) continue;
+            const u = b.getUserData() || {};
+            const want = g.ball || 'any';
+            const isBall = u.kind === 'ball' || u.kind === 'bball' || u.kind === 'cannonball';
+            if (!isBall || (want !== 'any' && u.kind !== want)) continue;
+            const q = b.getPosition();
+            if (Math.abs(q.x - bp.x) < 0.68 && q.y > bp.y - 0.55 && q.y < bp.y + 0.55) inside = true;
+          }
+          rt.hold = inside ? rt.hold + 1 : 0;
+          rt.full = rt.hold > 20;
+          return rt.full;
+        });
+      } else if (g.type === 'pop') {
+        const bs = this.parts.filter(p => p.type === 'balloon' && (g.fixedOnly ? p.fixed : true));
+        ok = bs.length > 0 && bs.every(p => this.rt[p.id].popped);
+      } else if (g.type === 'press') {
+        const bs = this.parts.filter(p => p.type === 'button');
+        ok = bs.length > 0 && bs.every(p => this.rt[p.id].pressed);
+      } else if (g.type === 'topple') {
+        const ds = this.parts.filter(p => p.type === 'domino' && p.fixed);
+        ok = ds.length > 0 && ds.every(p => { const a = Math.abs(this.rt[p.id].bodies.main.getAngle()) % Math.PI; return a > 0.9 && a < Math.PI - 0.9; });
+      }
+      res.push(ok);
+    }
+    return res;
+  };
+  Sim.prototype.checkWin = function (goals) {
+    if (this.won) return true;
+    const st = this.goalState(goals);
+    if (st.length && st.every(Boolean)) { this.winHold++; if (this.winHold > 10) this.won = true; }
+    else this.winHold = 0;
+    return this.won;
+  };
+
+  const Core = { PARTS, COLS, ROWS, DT, D2R, Sim, footprint, aabb, snap, placementProblem, partsOverlap, inBounds, xform, rectPts };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Core; else root.Core = Core;
+})(this);
+
+</script>
+<script>
+// Gizmo Lab — puzzles. Coordinates are grid cells (22 x 12), y grows downward.
+(function (root) {
+  const bricks = (list) => list.map(([x, y]) => ({ type: 'brick', x, y }));
+  const LEVELS = [
+    {
+      id: 'roll', name: 'First Roll',
+      goal: 'Get the bowling ball into the basket.',
+      hint: 'Drag a plank under the ball and tilt it.',
+      goals: [{ type: 'basket' }],
+      fixed: [
+        { type: 'ball', x: 2.5, y: 1.5 },
+        { type: 'basket', x: 8, y: 11.45 },
+      ],
+      tray: { plank: 2 },
+    },
+    {
+      id: 'pop', name: 'Pop!',
+      goal: 'Pop the balloon.',
+      hint: 'Balloons float up. Put the pin where it will go.',
+      goals: [{ type: 'pop' }],
+      fixed: [
+        { type: 'balloon', x: 6, y: 10.5 },
+        { type: 'plank', x: 7, y: 6, a: -30 },
+        ...bricks([[13, 2.5], [14, 2.5], [15, 2.5]]),
+      ],
+      tray: { pin: 1 },
+    },
+    {
+      id: 'boing', name: 'Boing!',
+      goal: 'Bounce the ball over the wall and into the basket.',
+      hint: 'A trampoline sends a falling ball back up. Give it a push sideways first.',
+      goals: [{ type: 'basket' }],
+      fixed: [
+        { type: 'bball', x: 2.5, y: 1.5 },
+        ...bricks([[11, 7.5], [11, 8.5], [11, 9.5], [11, 10.5], [11, 11.5]]),
+        { type: 'basket', x: 16, y: 11.45 },
+      ],
+      tray: { trampoline: 1, plank: 2 },
+    },
+    {
+      id: 'domino', name: 'Domino Day',
+      goal: 'Knock over all the dominoes.',
+      hint: 'There is a gap in the row. Fill it, then send the ball in.',
+      goals: [{ type: 'topple' }],
+      fixed: [
+        { type: 'ball', x: 2.5, y: 1.5 },
+        ...[9, 10, 11, 13, 14, 15, 16].map(x => ({ type: 'domino', x, y: 11.4 })),
+      ],
+      tray: { plank: 2, domino: 1 },
+    },
+    {
+      id: 'windy', name: 'Windy',
+      goal: 'Pop the balloon.',
+      hint: 'A fan blows light things. Where will the balloon be when it stops rising?',
+      goals: [{ type: 'pop' }],
+      fixed: [
+        { type: 'balloon', x: 3, y: 10.5 },
+        { type: 'pin', x: 10.5, y: 0.5, a: 180 },
+        ...bricks([[8, 6.5], [9, 6.5], [10, 6.5]]),
+      ],
+      tray: { fan: 1 },
+    },
+    {
+      id: 'belt', name: 'Over the Wall',
+      goal: 'Get the ball into the basket.',
+      hint: 'A conveyor belt carries the ball along. Which way should it go?',
+      goals: [{ type: 'basket' }],
+      fixed: [
+        { type: 'ball', x: 3.5, y: 1.5 },
+        ...bricks([[8, 6.5], [8, 7.5], [8, 8.5], [8, 9.5], [8, 10.5], [8, 11.5]]),
+        { type: 'basket', x: 10.5, y: 11.45 },
+      ],
+      tray: { conveyor: 1 },
+    },
+    {
+      id: 'power', name: 'Power Up',
+      goal: 'Pop the balloon.',
+      hint: 'The fan is waiting for power. Press the button!',
+      goals: [{ type: 'pop' }],
+      fixed: [
+        { type: 'ball', x: 2.5, y: 1.5 },
+        ...bricks([[12, 11.5], [12, 10.5], [12, 9.5]]),
+        { type: 'button', x: 12, y: 8.7 },
+        ...bricks([[15, 5.5], [16, 5.5], [17, 5.5], [18, 5.5], [19, 5.5], [20, 5.5]]),
+        { type: 'fan', x: 13.5, y: 6.5, a: 0, off: true },
+        { type: 'balloon', x: 15.5, y: 7 },
+        { type: 'pin', x: 20.5, y: 6.5, a: 270 },
+      ],
+      tray: { plank: 3 },
+    },
+    {
+      id: 'catapult', name: 'Catapult',
+      goal: 'Fling the bouncy ball into the basket.',
+      hint: 'Drop the heavy ball on the empty end of the see-saw.',
+      goals: [{ type: 'basket', ball: 'bball' }],
+      fixed: [
+        { type: 'ball', x: 2.5, y: 1.5 },
+        { type: 'seesaw', x: 5, y: 11.5 },
+        { type: 'bball', x: 3.5, y: 10.5 },
+        ...bricks([[10, 11.5], [11, 11.5], [10, 10.5], [11, 10.5]]),
+        { type: 'basket', x: 10.5, y: 9.45 },
+      ],
+      tray: { plank: 2 },
+    },
+    {
+      id: 'lift', name: 'Lift Off',
+      goal: 'Pop the balloon.',
+      hint: 'Something heavy in one bucket lifts the other one up to the button.',
+      goals: [{ type: 'pop' }],
+      fixed: [
+        { type: 'ball', x: 2.5, y: 1.5 },
+        { type: 'pulley', x: 11, y: 7.5 },
+        { type: 'brick', x: 12, y: 5.5 },
+        { type: 'button', x: 12, y: 6.3, a: 180 },
+        { type: 'cannon', x: 20, y: 11.5, a: 60, f: -1, off: true },
+        ...bricks([[14, 6], [15, 6], [16, 6]]),
+        { type: 'balloon', x: 15, y: 9 },
+      ],
+      tray: { plank: 2 },
+    },
+  ];
+  // fixed parts are locked; give ids
+  LEVELS.forEach(L => L.fixed.forEach((p, i) => { p.id = L.id + '-f' + i; p.fixed = true; }));
+  const SANDBOX_TRAY = { ball: 9, bball: 9, balloon: 9, plank: 20, brick: 30, seesaw: 4, trampoline: 6, conveyor: 6, fan: 6, domino: 20, pin: 9, pulley: 3, button: 4, cannon: 4, basket: 4 };
+  const Levels = { LEVELS, SANDBOX_TRAY };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Levels; else root.Levels = Levels;
+})(this);
+
+</script>
+<script>
+// Gizmo Lab — drawing. All drawing happens in cell units (ctx already scaled).
+(function (root) {
+  const C = root.Core;
+  const D2R = Math.PI / 180;
+  const COL = {
+    wood: '#d99a4e', woodDark: '#a8692c', woodLine: '#b97a37',
+    brick: '#c4553f', brickDark: '#93382a', mortar: '#e8c9a8',
+    ink: '#24304a', metal: '#9aa7b8', metalDark: '#5d6a7c', metalLight: '#d6dee8',
+    ball: '#2d3a8c', ballHi: '#5f6fd1', bball: '#f08a24', bballLine: '#9c4a0a',
+    balloon: '#ef4a74', balloonHi: '#ff9bb6',
+    tramp: '#2fa3c7', belt: '#3a3f4a', beltMark: '#ffd23f',
+    domino: '#fbf8f0', dominoDot: '#24304a',
+    pinHead: '#e8333a', basket: '#b0753a', basketDark: '#7d4d1f',
+    power: '#ffd23f', good: '#3fbf6a', cannon: '#3b4252', cannonHi: '#66708a',
+  };
+
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function lw(ctx, px) { ctx.lineWidth = px / ctx.__S; }
+
+  // pose helpers: edit mode uses the part; run mode reads bodies
+  function bodyPose(b) { const q = b.getPosition(); return { x: q.x, y: q.y, ang: b.getAngle() }; }
+
+  function drawBall(ctx, x, y, ang, kind) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    if (kind === 'ball') {
+      const r = 0.45;
+      ctx.fillStyle = COL.ball; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+      ctx.fillStyle = COL.ballHi; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.arc(-0.14, -0.15, 0.17, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.fillStyle = '#121a40';
+      [[0.12, -0.2], [0.24, -0.06], [0.08, 0.02]].forEach(([a, b]) => { ctx.beginPath(); ctx.arc(a, b, 0.055, 0, 7); ctx.fill(); });
+    } else if (kind === 'bball') {
+      const r = 0.4;
+      ctx.fillStyle = COL.bball; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+      ctx.strokeStyle = COL.bballLine; lw(ctx, 1.6);
+      ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-r * 1.15, 0, r * 0.75, -0.95, 0.95); ctx.stroke();
+      ctx.beginPath(); ctx.arc(r * 1.15, 0, r * 0.75, Math.PI - 0.95, Math.PI + 0.95); ctx.stroke();
+    } else { // cannonball
+      ctx.fillStyle = '#1c1f26'; ctx.beginPath(); ctx.arc(0, 0, 0.28, 0, 7); ctx.fill();
+      ctx.fillStyle = '#5b6170'; ctx.beginPath(); ctx.arc(-0.08, -0.09, 0.08, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBalloon(ctx, x, y, t) {
+    const sw = Math.sin(t * 2.2 + x) * 0.08;
+    ctx.strokeStyle = '#6b6b78'; lw(ctx, 1.3);
+    ctx.beginPath(); ctx.moveTo(x, y + 0.52);
+    ctx.bezierCurveTo(x + 0.15 + sw, y + 0.75, x - 0.15 - sw, y + 0.95, x + sw, y + 1.15); ctx.stroke();
+    ctx.fillStyle = COL.balloon;
+    ctx.beginPath(); ctx.ellipse(x, y, 0.4, 0.48, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x - 0.07, y + 0.53); ctx.lineTo(x + 0.07, y + 0.53); ctx.lineTo(x, y + 0.44); ctx.fill();
+    ctx.fillStyle = COL.balloonHi; ctx.beginPath(); ctx.ellipse(x - 0.15, y - 0.18, 0.08, 0.15, -0.4, 0, 7); ctx.fill();
+  }
+
+  function woodBar(ctx, w, h) {
+    ctx.fillStyle = COL.wood; rr(ctx, -w / 2, -h / 2, w, h, Math.min(0.06, h / 2)); ctx.fill();
+    ctx.strokeStyle = COL.woodLine; lw(ctx, 1);
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 0.2, -h * 0.1); ctx.lineTo(w / 2 - 0.5, -h * 0.1); ctx.moveTo(-w / 2 + 0.6, h * 0.22); ctx.lineTo(w / 2 - 0.15, h * 0.22); ctx.stroke();
+    ctx.strokeStyle = COL.woodDark; lw(ctx, 1.2); rr(ctx, -w / 2, -h / 2, w, h, Math.min(0.06, h / 2)); ctx.stroke();
+  }
+
+  function drawPlank(ctx, p) {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.a || 0) * D2R); woodBar(ctx, 3, 0.25); ctx.restore();
+  }
+  function drawBrick(ctx, p) {
+    ctx.save(); ctx.translate(p.x, p.y);
+    ctx.fillStyle = COL.brick; ctx.fillRect(-0.5, -0.5, 1, 1);
+    ctx.strokeStyle = COL.mortar; lw(ctx, 1.4);
+    ctx.beginPath();
+    ctx.moveTo(-0.5, -0.17); ctx.lineTo(0.5, -0.17); ctx.moveTo(-0.5, 0.17); ctx.lineTo(0.5, 0.17);
+    ctx.moveTo(0, -0.5); ctx.lineTo(0, -0.17); ctx.moveTo(-0.25, -0.17); ctx.lineTo(-0.25, 0.17); ctx.moveTo(0.25, -0.17); ctx.lineTo(0.25, 0.17);
+    ctx.moveTo(0, 0.17); ctx.lineTo(0, 0.5); ctx.stroke();
+    ctx.strokeStyle = COL.brickDark; lw(ctx, 1.2); ctx.strokeRect(-0.5, -0.5, 1, 1);
+    ctx.restore();
+  }
+  function drawSeesaw(ctx, p, rt) {
+    ctx.save(); ctx.translate(p.x, p.y);
+    ctx.fillStyle = COL.metalDark; ctx.beginPath(); ctx.moveTo(-0.5, 0.5); ctx.lineTo(0.5, 0.5); ctx.lineTo(0, -0.25); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    let x = p.x, y = p.y - 0.3, ang = 0;
+    if (rt && rt.bodies.plank) { const q = bodyPose(rt.bodies.plank); x = q.x; y = q.y; ang = q.ang; }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    woodBar(ctx, 4, 0.2);
+    ctx.fillStyle = COL.woodDark; ctx.fillRect(-2, -0.4, 0.12, 0.32); ctx.fillRect(1.88, -0.4, 0.12, 0.32);
+    ctx.restore();
+    ctx.fillStyle = COL.metalLight; ctx.beginPath(); ctx.arc(p.x, p.y - 0.3, 0.08, 0, 7); ctx.fill();
+  }
+  function drawTrampoline(ctx, p, rt, t) {
+    ctx.save(); ctx.translate(p.x, p.y);
+    const squish = rt && rt.squish ? rt.squish : 0;
+    ctx.strokeStyle = COL.metalDark; lw(ctx, 3);
+    ctx.beginPath(); ctx.moveTo(-0.8, -0.05); ctx.lineTo(-0.9, 0.25); ctx.moveTo(0.8, -0.05); ctx.lineTo(0.9, 0.25); ctx.stroke();
+    ctx.fillStyle = COL.tramp; rr(ctx, -1, -0.2 + squish * 0.08, 2, 0.18, 0.08); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.5; ctx.fillRect(-0.85, -0.17 + squish * 0.08, 1.7, 0.04); ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  function powerBadge(ctx, x, y, on) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = on ? COL.power : '#6b7286'; ctx.beginPath(); ctx.arc(0, 0, 0.2, 0, 7); ctx.fill();
+    ctx.fillStyle = on ? COL.ink : '#d4d8e2';
+    ctx.beginPath(); ctx.moveTo(0.03, -0.14); ctx.lineTo(-0.08, 0.02); ctx.lineTo(0, 0.02); ctx.lineTo(-0.03, 0.14); ctx.lineTo(0.09, -0.03); ctx.lineTo(0.01, -0.03); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function drawConveyor(ctx, p, rt, t, waits) {
+    const on = rt ? rt.on : !waits;
+    const f = p.f || 1;
+    ctx.save(); ctx.translate(p.x, p.y);
+    ctx.fillStyle = COL.belt; rr(ctx, -2, -0.25, 4, 0.5, 0.25); ctx.fill();
+    // moving marks
+    ctx.save(); rr(ctx, -1.85, -0.2, 3.7, 0.4, 0.2); ctx.clip();
+    const off = rt && on ? ((t * 4 * f) % 0.6 + 0.6) % 0.6 : 0;
+    ctx.strokeStyle = on ? COL.beltMark : '#8b8f99'; lw(ctx, 2.2);
+    for (let x = -2.4 + off; x < 2.4; x += 0.6) {
+      ctx.beginPath(); ctx.moveTo(x - 0.08 * f, -0.12); ctx.lineTo(x + 0.08 * f, 0); ctx.lineTo(x - 0.08 * f, 0.12); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = COL.metal;
+    [-1.75, 1.75].forEach(x => { ctx.beginPath(); ctx.arc(x, 0, 0.17, 0, 7); ctx.fill(); });
+    ctx.restore();
+    if (waits) powerBadge(ctx, p.x, p.y - 0.5, on);
+  }
+  function drawFan(ctx, p, rt, t, waits) {
+    const on = rt ? rt.on : !waits;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.a || 0) * D2R);
+    // air
+    if (rt && on) {
+      const L = rt.len || 6;
+      ctx.strokeStyle = '#ffffff'; lw(ctx, 1.5);
+      for (let i = 0; i < 5; i++) {
+        const ph = ((t * 3 + i * 0.37) % 1);
+        const xs = 0.6 + ph * L, yo = (i - 2) * 0.25;
+        ctx.globalAlpha = 0.45 * (1 - ph);
+        ctx.beginPath(); ctx.moveTo(xs, yo); ctx.lineTo(xs + 0.5, yo); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = '#4c7dc9'; rr(ctx, -0.5, -0.45, 0.7, 0.9, 0.12); ctx.fill();
+    ctx.fillStyle = COL.metalDark; ctx.fillRect(-0.35, 0.3, 0.4, 0.2);
+    // blades seen side-on: ellipse with spinning stripes
+    ctx.fillStyle = '#dbe4f0'; ctx.beginPath(); ctx.ellipse(0.32, 0, 0.13, 0.45, 0, 0, 7); ctx.fill();
+    const spin = rt && on ? t * 30 : 0.5;
+    ctx.fillStyle = '#7d8da3';
+    for (let k = 0; k < 3; k++) { const yy = Math.sin(spin + k * 2.09) * 0.36; ctx.beginPath(); ctx.ellipse(0.32, yy, 0.1, 0.08, 0, 0, 7); ctx.fill(); }
+    ctx.restore();
+    if (waits) powerBadge(ctx, p.x, p.y - 0.62, on);
+  }
+  function drawDomino(ctx, x, y, ang) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = COL.domino; rr(ctx, -0.125, -0.6, 0.25, 1.2, 0.05); ctx.fill();
+    ctx.strokeStyle = '#8d8a80'; lw(ctx, 1); ctx.stroke();
+    ctx.strokeStyle = COL.dominoDot; lw(ctx, 1); ctx.beginPath(); ctx.moveTo(-0.08, 0); ctx.lineTo(0.08, 0); ctx.stroke();
+    ctx.fillStyle = COL.dominoDot;
+    [-0.38, -0.2, 0.2, 0.4].forEach(yy => { ctx.beginPath(); ctx.arc(0, yy, 0.035, 0, 7); ctx.fill(); });
+    ctx.restore();
+  }
+  function drawPin(ctx, p) {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.a || 0) * D2R);
+    ctx.fillStyle = COL.metalLight; ctx.beginPath(); ctx.moveTo(-0.05, 0.2); ctx.lineTo(0.05, 0.2); ctx.lineTo(0, -0.42); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = COL.metalDark; lw(ctx, 0.8); ctx.stroke();
+    ctx.fillStyle = COL.pinHead; rr(ctx, -0.25, 0.22, 0.5, 0.26, 0.1); ctx.fill();
+    ctx.fillStyle = '#b81e28'; ctx.fillRect(-0.16, 0.12, 0.32, 0.12);
+    ctx.restore();
+  }
+  function drawBucket(ctx, x, y) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = COL.metal;
+    ctx.beginPath(); ctx.moveTo(-0.7, -0.45); ctx.lineTo(0.7, -0.45); ctx.lineTo(0.6, 0.45); ctx.lineTo(-0.6, 0.45); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = COL.metalDark; ctx.fillRect(-0.58, -0.33, 1.16, 0.7);
+    ctx.fillStyle = COL.metal; ctx.fillRect(-0.7, -0.45, 1.4, 0.1);
+    ctx.strokeStyle = COL.metalLight; lw(ctx, 1); ctx.beginPath(); ctx.moveTo(-0.66, 0.05); ctx.lineTo(0.66, 0.05); ctx.stroke();
+    ctx.restore();
+  }
+  function drawPulley(ctx, p, rt) {
+    const ga = C.xform(p, -2.0, -2.05), gb = C.xform(p, 2.0, -2.05);
+    let A = C.xform(p, -1.25, 1.1), B = C.xform(p, 1.25, 1.1);
+    if (rt) { const a = rt.bodies.a.getPosition(), b = rt.bodies.b.getPosition(); A = [a.x, a.y]; B = [b.x, b.y]; }
+    // rope
+    ctx.strokeStyle = '#8a6a3c'; lw(ctx, 2);
+    ctx.beginPath();
+    ctx.moveTo(A[0] - 0.65, A[1] - 0.45); ctx.lineTo(ga[0] - 0.25, ga[1]);
+    ctx.moveTo(ga[0], ga[1] - 0.25); ctx.lineTo(gb[0], gb[1] - 0.25);
+    ctx.moveTo(gb[0] + 0.25, gb[1]); ctx.lineTo(B[0] + 0.65, B[1] - 0.45);
+    ctx.stroke();
+    // handles
+    ctx.strokeStyle = COL.metalDark; lw(ctx, 1.4);
+    [[A, -1], [B, 1]].forEach(([c, s]) => { ctx.beginPath(); ctx.moveTo(c[0] - 0.7, c[1] - 0.45); ctx.quadraticCurveTo(c[0], c[1] - 1.0, c[0] + 0.7, c[1] - 0.45); ctx.stroke(); });
+    drawBucket(ctx, A[0], A[1]); drawBucket(ctx, B[0], B[1]);
+    // wheels
+    [ga, gb].forEach(g => {
+      ctx.fillStyle = COL.metalDark; ctx.beginPath(); ctx.arc(g[0], g[1], 0.3, 0, 7); ctx.fill();
+      ctx.fillStyle = COL.metalLight; ctx.beginPath(); ctx.arc(g[0], g[1], 0.1, 0, 7); ctx.fill();
+    });
+  }
+  function drawButton(ctx, p, rt) {
+    const pressed = rt && rt.pressed;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.a || 0) * D2R);
+    ctx.fillStyle = pressed ? COL.good : '#e8333a';
+    rr(ctx, -0.38, pressed ? -0.06 : -0.2, 0.76, pressed ? 0.12 : 0.22, 0.08); ctx.fill();
+    ctx.fillStyle = '#5b6274'; rr(ctx, -0.6, 0, 1.2, 0.3, 0.06); ctx.fill();
+    ctx.fillStyle = pressed ? COL.power : '#8b91a1'; ctx.beginPath(); ctx.arc(0.42, 0.15, 0.06, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  function drawCannon(ctx, p, rt, t, waits) {
+    const f = p.f || 1, ang = -(p.a || 0) * D2R;
+    ctx.save(); ctx.translate(p.x, p.y + 0.05);
+    ctx.save(); ctx.scale(f, 1); ctx.rotate(ang);
+    ctx.fillStyle = COL.cannon; rr(ctx, -0.35, -0.2, 1.4, 0.4, 0.12); ctx.fill();
+    ctx.fillStyle = COL.cannonHi; ctx.fillRect(0.85, -0.24, 0.2, 0.48);
+    ctx.fillStyle = '#1c1f26'; ctx.beginPath(); ctx.arc(1.06, 0, 0.12, 0, 7); ctx.fill();
+    ctx.restore();
+    if (rt && rt.flash) {
+      ctx.save(); ctx.scale(f, 1); ctx.rotate(ang);
+      ctx.fillStyle = COL.power; ctx.globalAlpha = rt.flash / 12; ctx.beginPath(); ctx.arc(1.3, 0, 0.35 * (1 + (12 - rt.flash) / 10), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.save(); ctx.translate(p.x, p.y);
+    ctx.fillStyle = COL.woodDark; rr(ctx, -0.6, 0.15, 1.2, 0.3, 0.06); ctx.fill();
+    ctx.fillStyle = '#4a3423'; ctx.beginPath(); ctx.arc(-0.3, 0.38, 0.12, 0, 7); ctx.arc(0.3, 0.38, 0.12, 0, 7); ctx.fill();
+    ctx.restore();
+    if (waits) powerBadge(ctx, p.x - 0.75 * f, p.y - 0.15, rt ? (rt.armed) : false);
+  }
+  function drawBasket(ctx, p, rt) {
+    const full = rt && rt.full;
+    ctx.save(); ctx.translate(p.x, p.y);
+    if (full) { ctx.fillStyle = COL.good; ctx.globalAlpha = 0.35; rr(ctx, -0.95, -0.7, 1.9, 1.3, 0.2); ctx.fill(); ctx.globalAlpha = 1; }
+    ctx.fillStyle = COL.basket;
+    ctx.beginPath(); ctx.moveTo(-0.8, -0.55); ctx.lineTo(0.8, -0.55); ctx.lineTo(0.68, 0.55); ctx.lineTo(-0.68, 0.55); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = COL.basketDark; lw(ctx, 1.4);
+    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 0.3, -0.5); ctx.lineTo(i * 0.27, 0.52); ctx.stroke(); }
+    for (let j = 0; j < 3; j++) { const yy = -0.25 + j * 0.3; ctx.beginPath(); ctx.moveTo(-0.76, yy); ctx.lineTo(0.76, yy); ctx.stroke(); }
+    ctx.fillStyle = COL.basketDark; rr(ctx, -0.86, -0.62, 1.72, 0.16, 0.08); ctx.fill();
+    ctx.restore();
+  }
+
+  // draw one part. rt is runtime (null in edit mode). opts: {t, waits}
+  function drawPart(ctx, p, rt, t, waits) {
+    switch (p.type) {
+      case 'ball': case 'bball': {
+        if (rt) { const b = rt.bodies.main; const q = bodyPose(b); drawBall(ctx, q.x, q.y, q.ang, p.type); }
+        else drawBall(ctx, p.x, p.y, 0, p.type);
+        break;
+      }
+      case 'balloon': {
+        if (rt) { if (rt.bodies.main) { const q = bodyPose(rt.bodies.main); drawBalloon(ctx, q.x, q.y, t); } }
+        else drawBalloon(ctx, p.x, p.y, t);
+        break;
+      }
+      case 'plank': drawPlank(ctx, p); break;
+      case 'brick': drawBrick(ctx, p); break;
+      case 'seesaw': drawSeesaw(ctx, p, rt); break;
+      case 'trampoline': drawTrampoline(ctx, p, rt, t); break;
+      case 'conveyor': drawConveyor(ctx, p, rt, t, waits); break;
+      case 'fan': drawFan(ctx, p, rt, t, waits); break;
+      case 'domino': {
+        if (rt) { const q = bodyPose(rt.bodies.main); drawDomino(ctx, q.x, q.y, q.ang); } else drawDomino(ctx, p.x, p.y, 0);
+        break;
+      }
+      case 'pin': drawPin(ctx, p); break;
+      case 'pulley': drawPulley(ctx, p, rt); break;
+      case 'button': drawButton(ctx, p, rt); break;
+      case 'cannon': drawCannon(ctx, p, rt, t, waits); break;
+      case 'basket': drawBasket(ctx, p, rt); break;
+    }
+  }
+
+  // draw order: big background-ish things first
+  const ORDER = { pulley: 0, basket: 1, plank: 2, brick: 2, seesaw: 3, trampoline: 3, conveyor: 3, fan: 3, button: 3, cannon: 3, pin: 4, domino: 5, balloon: 6, bball: 7, ball: 8 };
+
+  const Render = { COL, drawPart, drawBall, ORDER, rr };
+  root.Render = Render;
+})(this);
+
+</script>
+<script>
+// Gizmo Lab — UI
+(function () {
+  const { PARTS, COLS, ROWS, DT, Sim } = Core;
+  const { LEVELS, SANDBOX_TRAY } = Levels;
+  const $ = s => document.querySelector(s);
+
+  const cv = $('#cv'), ctx = cv.getContext('2d');
+  const stage = $('#stage'), trayEl = $('#tray'), tools = $('#tools');
+  const playBtn = $('#playBtn');
+
+  // ---------- persistence ----------
+  const KEY = 'gizmo-lab-v1';
+  let saved = { solved: {}, layouts: {}, muted: false };
+  try { const raw = localStorage.getItem(KEY); if (raw) saved = Object.assign(saved, JSON.parse(raw)); } catch (e) { }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { } }
+
+  // ---------- state ----------
+  const S = {
+    mode: 'edit', idx: 0, level: null, placed: [], sel: null, drag: null,
+    sim: null, acc: 0, t: 0, runT: 0, fx: [], winShown: false, hint: false, uid: 1,
+  };
+  const isSandbox = () => S.idx === -1;
+
+  // ---------- sound ----------
+  let ac = null;
+  function audio() {
+    if (saved.muted) return null;
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(type, f0, f1, dur, vol) {
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, freq, vol, kind) {
+    const a = audio(); if (!a) return;
+    const n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+    const src = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = buf; fl.type = kind; fl.frequency.value = freq; g.gain.value = vol;
+    src.connect(fl).connect(g).connect(a.destination); src.start();
+  }
+  const lastSnd = {};
+  function sfx(name) {
+    const now = performance.now(); if (lastSnd[name] && now - lastSnd[name] < 70) return; lastSnd[name] = now;
+    if (name === 'pop') noise(0.12, 1800, 0.6, 'highpass');
+    else if (name === 'boing') tone('sine', 180, 520, 0.28, 0.25);
+    else if (name === 'click') tone('square', 1200, 700, 0.06, 0.08);
+    else if (name === 'boom') { noise(0.5, 400, 0.9, 'lowpass'); tone('sine', 90, 40, 0.3, 0.3); }
+    else if (name === 'place') tone('triangle', 520, 380, 0.07, 0.12);
+    else if (name === 'nope') tone('square', 160, 120, 0.12, 0.06);
+    else if (name === 'win') [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone('triangle', f, f, 0.22, 0.18), i * 110));
+  }
+
+  // ---------- level loading ----------
+  function trayDef() { return isSandbox() ? SANDBOX_TRAY : S.level.tray; }
+  function fixedParts() { return isSandbox() ? [] : S.level.fixed; }
+  function allParts() { return fixedParts().concat(S.placed); }
+  function layoutKey() { return isSandbox() ? 'sandbox' : S.level.id; }
+
+  function loadLevel(idx) {
+    stopRun();
+    S.idx = idx; S.level = idx >= 0 ? LEVELS[idx] : null;
+    const lay = saved.layouts[layoutKey()] || [];
+    S.placed = lay.map(p => ({ ...p }));
+    S.uid = 1 + S.placed.reduce((m, p) => Math.max(m, +String(p.id).slice(1) || 0), 0);
+    S.sel = null; S.hint = false;
+    renderHeader(); renderTray(); hideTools();
+    $('#menu').hidden = true; $('#win').hidden = true;
+  }
+  function saveLayout() {
+    saved.layouts[layoutKey()] = S.placed.map(p => ({ id: p.id, type: p.type, x: p.x, y: p.y, a: p.a || 0, f: p.f || 1 }));
+    persist();
+  }
+
+  function renderHeader() {
+    if (isSandbox()) {
+      $('#lvlNum').textContent = 'Free build';
+      $('#lvlName').textContent = 'Workshop';
+      $('#goalText').textContent = 'Build any contraption you like, then press Play.';
+      $('#hintBtn').hidden = true;
+    } else {
+      $('#lvlNum').textContent = 'Puzzle ' + (S.idx + 1) + ' of ' + LEVELS.length;
+      $('#lvlName').textContent = S.level.name + (saved.solved[S.level.id] ? '  ✓' : '');
+      $('#goalText').textContent = S.hint ? 'Hint: ' + S.level.hint : S.level.goal;
+      $('#hintBtn').hidden = false;
+      $('#hintBtn').textContent = S.hint ? 'Goal' : 'Hint';
+    }
+    playBtn.textContent = S.mode === 'run' ? 'Stop' : 'Play';
+    playBtn.classList.toggle('stop', S.mode === 'run');
+    document.body.classList.toggle('running', S.mode === 'run');
+  }
+
+  // ---------- tray ----------
+  function remaining(type) {
+    const n = trayDef()[type] || 0;
+    return n - S.placed.filter(p => p.type === type).length;
+  }
+  function renderTray() {
+    trayEl.innerHTML = '';
+    const def = trayDef();
+    trayEl.classList.toggle('many', Object.keys(def).length > 8);
+    Object.keys(def).forEach(type => {
+      const left = remaining(type);
+      const tile = document.createElement('button');
+      tile.className = 'tile'; tile.dataset.type = type; tile.type = 'button';
+      tile.disabled = left <= 0;
+      tile.setAttribute('aria-label', PARTS[type].name + ', ' + left + ' left');
+      const c = document.createElement('canvas'); c.width = 128; c.height = 96; c.className = 'icon';
+      drawIcon(c, type);
+      const name = document.createElement('span'); name.className = 'name'; name.textContent = PARTS[type].name;
+      const cnt = document.createElement('span'); cnt.className = 'count'; cnt.textContent = isSandbox() ? '' : '×' + left;
+      if (isSandbox()) cnt.hidden = true;
+      tile.append(c, cnt, name);
+      tile.addEventListener('pointerdown', e => trayDown(e, type, tile));
+      tile.addEventListener('click', () => { if (!tile.dataset.dragged) showTip(type); });
+      trayEl.appendChild(tile);
+    });
+    if (!Object.keys(def).length) trayEl.innerHTML = '<p class="empty">No parts for this one.</p>';
+  }
+  function drawIcon(c, type) {
+    const g = c.getContext('2d');
+    const p = { type, x: 0, y: 0, a: type === 'plank' ? 160 : 0, f: 1 };
+    const b = Core.aabb(Core.footprint(p));
+    const extraTop = type === 'balloon' ? 0 : 0, extraBot = type === 'balloon' ? 0.75 : 0;
+    const w = b.x1 - b.x0, h = (b.y1 + extraBot) - (b.y0 - extraTop);
+    const sc = Math.min(110 / w, 80 / h, 64);
+    g.save(); g.translate(64, 48); g.scale(sc, sc); g.translate(-(b.x0 + b.x1) / 2, -((b.y0 - extraTop) + (b.y1 + extraBot)) / 2);
+    g.__S = sc;
+    Render.drawPart(g, p, null, 0.3, false);
+    g.restore();
+  }
+  let tipTimer = 0;
+  function showTip(type) { toast(PARTS[type].name + ': ' + PARTS[type].tip); }
+  function toast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.hidden = false; t.classList.add('show');
+    clearTimeout(tipTimer); tipTimer = setTimeout(() => { t.classList.remove('show'); }, 2600);
+  }
+
+  // ---------- geometry ----------
+  let CELL = 40, DPR = 1;
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    const pad = 8;
+    CELL = Math.max(10, Math.floor(Math.min((r.width - pad * 2) / COLS, (r.height - pad * 2) / ROWS)));
+    DPR = Math.min(2.5, window.devicePixelRatio || 1);
+    cv.style.width = CELL * COLS + 'px'; cv.style.height = CELL * ROWS + 'px';
+    cv.width = Math.round(CELL * COLS * DPR); cv.height = Math.round(CELL * ROWS * DPR);
+    if (S.sel) placeTools();
+  }
+  window.addEventListener('resize', resize);
+  function toCell(clientX, clientY) {
+    const r = cv.getBoundingClientRect();
+    return { x: (clientX - r.left) / CELL, y: (clientY - r.top) / CELL };
+  }
+  function pointInItem(pt, it, pad) {
+    if (it.r) return Math.hypot(pt.x - it.c[0], pt.y - it.c[1]) < it.r + pad;
+    // inflate test: point within pad of polygon or inside
+    const P = it.pts; let inside = true, sign = 0, best = Infinity;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length];
+      const cr = (b[0] - a[0]) * (pt.y - a[1]) - (b[1] - a[1]) * (pt.x - a[0]);
+      if (cr !== 0) { if (!sign) sign = Math.sign(cr); else if (Math.sign(cr) !== sign) inside = false; }
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      let t = ((pt.x - a[0]) * dx + (pt.y - a[1]) * dy) / (dx * dx + dy * dy); t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(pt.x - a[0] - t * dx, pt.y - a[1] - t * dy));
+    }
+    return inside || best < pad;
+  }
+  function hitPart(pt) {
+    const list = allParts().slice().sort((a, b) => (Render.ORDER[b.type] || 0) - (Render.ORDER[a.type] || 0));
+    for (const pad of [0.05, 0.3]) for (const p of list) if (Core.footprint(p).some(it => pointInItem(pt, it, pad))) return p;
+    return null;
+  }
+  function problem(p) { return Core.placementProblem(p, allParts().filter(q => q.id !== p.id)); }
+
+  // ---------- dragging ----------
+  function overTray(e) {
+    const r = trayEl.getBoundingClientRect();
+    return e.clientY >= r.top - 4;
+  }
+  function trayDown(e, type, tile) {
+    if (S.mode === 'run' || remaining(type) <= 0) return;
+    audio();
+    const start = { x: e.clientX, y: e.clientY };
+    tile.setPointerCapture(e.pointerId);
+    const touch = e.pointerType !== 'mouse';
+    let started = false;
+    const move = ev => {
+      if (!started) {
+        const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+        if (dy < -8 && Math.abs(dy) > Math.abs(dx) * 0.8 || (!touch && Math.hypot(dx, dy) > 6)) {
+          started = true;
+          const p = { id: 'u' + (S.uid++), type, x: 0, y: 0, a: type === 'cannon' ? 30 : 0, f: 1 };
+          S.drag = { part: p, fromTray: true, off: { x: 0, y: touch ? -1.1 : 0 }, valid: false };
+          select(null);
+        } else return;
+      }
+      dragMove(ev);
+    };
+    const up = ev => {
+      tile.removeEventListener('pointermove', move); tile.removeEventListener('pointerup', up); tile.removeEventListener('pointercancel', up);
+      if (started) { tile.dataset.dragged = '1'; setTimeout(() => delete tile.dataset.dragged, 0); dragEnd(ev, ev.type === 'pointercancel'); }
+    };
+    tile.addEventListener('pointermove', move); tile.addEventListener('pointerup', up); tile.addEventListener('pointercancel', up);
+  }
+  function dragMove(e) {
+    const d = S.drag; if (!d) return;
+    const pt = toCell(e.clientX, e.clientY);
+    const raw = { ...d.part, x: pt.x + d.off.x, y: pt.y + d.off.y };
+    const sn = Core.snap(raw);
+    d.part.x = sn.x; d.part.y = sn.y;
+    d.overTray = overTray(e);
+    d.valid = !d.overTray && !problem(d.part);
+    d.moved = true;
+  }
+  function dragEnd(e, cancelled) {
+    const d = S.drag; S.drag = null; if (!d) return;
+    if (d.fromTray) {
+      if (!cancelled && d.valid) { S.placed.push(d.part); sfx('place'); select(d.part.id); saveLayout(); }
+      else if (!d.overTray && !cancelled) { sfx('nope'); toast("That spot is taken. Try somewhere with room."); }
+    } else {
+      const p = S.placed.find(q => q.id === d.part.id);
+      if (d.overTray && !cancelled) { removePart(p.id); return; }
+      if (!d.moved) { select(p.id); return; }
+      if (!cancelled && d.valid) { p.x = d.part.x; p.y = d.part.y; sfx('place'); saveLayout(); }
+      else if (!cancelled) { sfx('nope'); }
+      select(p.id);
+    }
+    renderTray();
+  }
+
+  cv.addEventListener('pointerdown', e => {
+    audio();
+    if (S.mode === 'run') return;
+    const pt = toCell(e.clientX, e.clientY);
+    const p = hitPart(pt);
+    if (!p) { select(null); return; }
+    if (p.fixed) { select(null); toast('That part is bolted down. Use the parts below.'); return; }
+    cv.setPointerCapture(e.pointerId);
+    S.drag = { part: { ...p }, fromTray: false, off: { x: p.x - pt.x, y: p.y - pt.y }, valid: true, moved: false };
+    const start = { x: e.clientX, y: e.clientY };
+    hideTools();
+    const move = ev => {
+      if (!S.drag) return;
+      if (!S.drag.moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+      dragMove(ev);
+    };
+    const up = ev => {
+      cv.removeEventListener('pointermove', move); cv.removeEventListener('pointerup', up); cv.removeEventListener('pointercancel', up);
+      dragEnd(ev, ev.type === 'pointercancel');
+    };
+    cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  });
+
+  // ---------- selection tools ----------
+  function select(id) {
+    S.sel = id;
+    if (!id) { hideTools(); return; }
+    const p = S.placed.find(q => q.id === id); if (!p) { hideTools(); return; }
+    const def = PARTS[p.type];
+    $('#turnBtn').hidden = def.rot === 'none';
+    $('#flipBtn').hidden = !def.flip;
+    placeTools();
+  }
+  function hideTools() { tools.hidden = true; }
+  function placeTools() {
+    const p = S.placed.find(q => q.id === S.sel); if (!p) return hideTools();
+    tools.hidden = false;
+    const b = Core.aabb(Core.footprint(p));
+    const cr = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    const tw = tools.offsetWidth, th = tools.offsetHeight;
+    let x = cr.left - sr.left + ((b.x0 + b.x1) / 2) * CELL - tw / 2;
+    let y = cr.top - sr.top + b.y0 * CELL - th - 10;
+    if (y < 4) y = cr.top - sr.top + b.y1 * CELL + 10;
+    x = Math.max(4, Math.min(sr.width - tw - 4, x));
+    y = Math.max(4, Math.min(sr.height - th - 4, y));
+    tools.style.transform = `translate(${x}px, ${y}px)`;
+  }
+  function tryChange(fn) {
+    const p = S.placed.find(q => q.id === S.sel); if (!p) return;
+    const before = { ...p };
+    fn(p);
+    const sn = Core.snap(p); p.x = sn.x; p.y = sn.y;
+    if (problem(p)) {
+      // nudge up to one cell to find room
+      const tries = [[0, -0.5], [0, 0.5], [-0.5, 0], [0.5, 0], [0, -1], [0, 1], [-1, 0], [1, 0]];
+      let ok = false;
+      for (const [dx, dy] of tries) { const q = Core.snap({ ...p, x: p.x + dx, y: p.y + dy }); if (!problem(q)) { p.x = q.x; p.y = q.y; ok = true; break; } }
+      if (!ok) { Object.assign(p, before); sfx('nope'); toast('No room to turn it here.'); }
+      else sfx('place');
+    } else sfx('place');
+    saveLayout(); placeTools();
+  }
+  $('#turnBtn').addEventListener('click', () => tryChange(p => {
+    const r = PARTS[p.type].rot;
+    if (r === 'free') p.a = ((p.a || 0) + 15) % 180;
+    else if (r === 'quarter') p.a = ((p.a || 0) + 90) % 360;
+    else if (r === 'aim') p.a = ((p.a || 0) + 15) % 90;
+  }));
+  $('#flipBtn').addEventListener('click', () => tryChange(p => { p.f = -(p.f || 1); }));
+  $('#delBtn').addEventListener('click', () => { if (S.sel) removePart(S.sel); });
+  function removePart(id) {
+    S.placed = S.placed.filter(p => p.id !== id);
+    select(null); saveLayout(); renderTray(); sfx('click');
+  }
+
+  // ---------- run ----------
+  function startRun() {
+    select(null);
+    S.sim = new Sim(allParts());
+    S.mode = 'run'; S.acc = 0; S.runT = 0; S.winShown = false; S.fx = [];
+    renderHeader();
+  }
+  function stopRun() {
+    S.sim = null; S.mode = 'edit'; S.fx = [];
+    $('#win').hidden = true;
+    if (S.level || isSandbox()) renderHeader();
+  }
+  playBtn.addEventListener('click', () => { audio(); if (S.mode === 'run') stopRun(); else startRun(); });
+
+  function handleEvents() {
+    const ev = S.sim.events; S.sim.events = [];
+    for (const e of ev) {
+      if (e.type === 'pop') {
+        sfx('pop');
+        for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28, v = 2 + Math.random() * 4; S.fx.push({ k: 'bit', x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, life: 1, c: i % 3 ? Render.COL.balloon : '#ffffff' }); }
+      } else if (e.type === 'boom') {
+        sfx('boom');
+        for (let i = 0; i < 7; i++) S.fx.push({ k: 'puff', x: e.x, y: e.y, vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 1.5, life: 1, r: 0.2 + Math.random() * 0.2 });
+      } else if (e.type === 'boing') sfx('boing');
+      else if (e.type === 'click') { sfx('click'); S.fx.push({ k: 'ring', x: e.x, y: e.y, life: 1 }); }
+    }
+  }
+  function onWin() {
+    S.winShown = true;
+    sfx('win');
+    if (!isSandbox()) {
+      const first = !saved.solved[S.level.id];
+      saved.solved[S.level.id] = true; persist();
+      renderHeader();
+      setTimeout(() => {
+        if (S.mode !== 'run') return;
+        $('#winMsg').textContent = first ? S.level.name + ' solved!' : 'Solved again!';
+        $('#nextBtn').hidden = S.idx >= LEVELS.length - 1;
+        $('#winFree').hidden = S.idx < LEVELS.length - 1;
+        $('#win').hidden = false;
+        confettiBurst();
+      }, 650);
+    }
+  }
+  function confettiBurst() {
+    const cols = ['#ffd23f', '#ef4a74', '#2fa3c7', '#3fbf6a', '#f08a24'];
+    for (let i = 0; i < 60; i++) S.fx.push({ k: 'bit', x: Math.random() * COLS, y: -0.5, vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, life: 2.2, c: cols[i % 5] });
+  }
+  $('#nextBtn').addEventListener('click', () => loadLevel(S.idx + 1));
+  $('#againBtn').addEventListener('click', () => { $('#win').hidden = true; });
+  $('#winFree').addEventListener('click', () => loadLevel(-1));
+
+  // ---------- header buttons ----------
+  $('#hintBtn').addEventListener('click', () => { S.hint = !S.hint; renderHeader(); });
+  let clearArm = 0;
+  $('#clearBtn').addEventListener('click', () => {
+    if (S.mode === 'run') stopRun();
+    if (!S.placed.length) { toast('Nothing to clear yet.'); return; }
+    if (Date.now() - clearArm < 2500) { S.placed = []; clearArm = 0; $('#clearBtn').textContent = 'Clear'; select(null); saveLayout(); renderTray(); sfx('click'); return; }
+    clearArm = Date.now(); $('#clearBtn').textContent = 'Sure?';
+    setTimeout(() => { $('#clearBtn').textContent = 'Clear'; }, 2500);
+  });
+  function renderSound() { $('#soundBtn').textContent = saved.muted ? 'Sound off' : 'Sound on'; $('#soundBtn').setAttribute('aria-pressed', String(!saved.muted)); }
+  $('#soundBtn').addEventListener('click', () => { saved.muted = !saved.muted; persist(); renderSound(); });
+
+  // ---------- menu ----------
+  function renderMenu() {
+    const g = $('#levelGrid'); g.innerHTML = '';
+    LEVELS.forEach((L, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'lvl' + (saved.solved[L.id] ? ' done' : '') + (i === S.idx ? ' current' : '');
+      b.innerHTML = `<span class="n">${i + 1}</span><span class="t"></span><span class="g"></span>${saved.solved[L.id] ? '<span class="ok">Solved</span>' : ''}`;
+      b.querySelector('.t').textContent = L.name; b.querySelector('.g').textContent = L.goal;
+      b.addEventListener('click', () => loadLevel(i));
+      g.appendChild(b);
+    });
+    const f = document.createElement('button'); f.type = 'button'; f.className = 'lvl free' + (S.idx === -1 ? ' current' : '');
+    f.innerHTML = '<span class="n">+</span><span class="t">Free build</span><span class="g">Every part, no goal. Make anything.</span>';
+    f.addEventListener('click', () => loadLevel(-1));
+    g.appendChild(f);
+  }
+  $('#menuBtn').addEventListener('click', () => { renderMenu(); $('#menu').hidden = false; });
+  $('#menuClose').addEventListener('click', () => { $('#menu').hidden = true; });
+
+  // ---------- drawing ----------
+  function drawBoard(g) {
+    g.fillStyle = '#3c6e86'; g.fillRect(0, 0, COLS, ROWS);
+    g.fillStyle = '#2b5469';
+    for (let x = 1; x < COLS; x++) for (let y = 1; y < ROWS; y++) { g.beginPath(); g.arc(x, y, 0.065, 0, 7); g.fill(); }
+    // floor
+    g.fillStyle = '#2a4b5c'; g.fillRect(0, ROWS - 0.06, COLS, 0.06);
+  }
+  function waitsFor(p, hasButton) {
+    if (!PARTS[p.type].powered) return false;
+    return !!p.off || (!p.fixed && hasButton);
+  }
+  function outline(g, p, color, fill) {
+    for (const it of Core.footprint(p)) {
+      g.beginPath();
+      if (it.r) g.arc(it.c[0], it.c[1], it.r + 0.08, 0, 7);
+      else { it.pts.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); }
+      if (fill) { g.fillStyle = fill; g.fill(); }
+      if (color) { g.strokeStyle = color; g.stroke(); }
+    }
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - (frame.last || now)) / 1000); frame.last = now;
+    S.t += dt;
+    if (S.mode === 'run' && S.sim) {
+      S.acc += dt; let n = 0;
+      while (S.acc >= DT && n < 4) {
+        S.sim.step(); S.acc -= DT; n++;
+        if (!isSandbox() && !S.winShown && S.sim.checkWin(S.level.goals)) onWin();
+        else if (isSandbox()) S.sim.goalState([{ type: 'basket' }]);
+      }
+      if (n === 4) S.acc = 0;
+      S.runT += dt;
+      handleEvents();
+    }
+    // particles
+    for (const f of S.fx) { f.life -= dt * (f.k === 'ring' ? 2.5 : 1.1); if (f.vx !== undefined) { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += (f.k === 'puff' ? -0.5 : 9) * dt; } }
+    S.fx = S.fx.filter(f => f.life > 0);
+
+    const g = ctx;
+    g.setTransform(DPR * CELL, 0, 0, DPR * CELL, 0, 0);
+    g.__S = CELL * DPR / DPR; // px per cell in css px for line widths
+    g.__S = CELL;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    drawBoard(g);
+    const parts = allParts().slice();
+    const hasButton = parts.some(p => p.type === 'button');
+    const dragging = S.drag && S.drag.moved !== false ? S.drag : null;
+    const draw = parts.filter(p => !(dragging && !dragging.fromTray && p.id === dragging.part.id))
+      .sort((a, b) => (Render.ORDER[a.type] || 0) - (Render.ORDER[b.type] || 0));
+    const running = S.mode === 'run' && S.sim;
+    for (const p of draw) {
+      const rt = running ? S.sim.rt[p.id] : null;
+      Render.drawPart(g, p, rt, S.t, waitsFor(p, hasButton || (dragging && dragging.part.type === 'button')));
+    }
+    if (running) for (const b of S.sim.extras) { const q = b.getPosition(); Render.drawBall(g, q.x, q.y, b.getAngle(), 'cannon'); }
+    // selection
+    if (!running && S.sel && !dragging) {
+      const p = S.placed.find(q => q.id === S.sel);
+      if (p) { g.setLineDash([0.15, 0.12]); g.lineWidth = 2.5 / CELL; outline(g, p, '#ffd23f'); g.setLineDash([]); }
+    }
+    // ghost
+    if (dragging && dragging.part) {
+      const p = dragging.part;
+      if (!dragging.overTray) {
+        g.globalAlpha = 0.9; Render.drawPart(g, p, null, S.t, waitsFor(p, hasButton)); g.globalAlpha = 1;
+        g.lineWidth = 2.5 / CELL; outline(g, p, dragging.valid ? '#ffffff' : '#ff5a5a', dragging.valid ? null : 'rgba(255,70,70,0.25)');
+      }
+    }
+    // particles
+    for (const f of S.fx) {
+      g.globalAlpha = Math.max(0, Math.min(1, f.life));
+      if (f.k === 'bit') { g.fillStyle = f.c; g.fillRect(f.x - 0.06, f.y - 0.06, 0.12, 0.12); }
+      else if (f.k === 'puff') { g.fillStyle = '#d9dde6'; g.beginPath(); g.arc(f.x, f.y, f.r * (2 - f.life), 0, 7); g.fill(); }
+      else if (f.k === 'ring') { g.strokeStyle = '#ffd23f'; g.lineWidth = 3 / CELL; g.beginPath(); g.arc(f.x, f.y, 0.3 + (1 - f.life) * 0.8, 0, 7); g.stroke(); }
+    }
+    g.globalAlpha = 1;
+    // edit-mode hint when the board has nothing placed yet
+    if (!running && !S.placed.length && !S.drag && S.idx === 0 && !saved.solved[S.level.id]) {
+      const y = ROWS - 0.6 + Math.sin(S.t * 3) * 0.12;
+      g.fillStyle = 'rgba(255,255,255,0.85)'; g.font = `700 ${0.42}px Nunito, system-ui, sans-serif`; g.textAlign = 'center';
+      g.fillText('Drag a plank up from the shelf ↓', COLS / 2 + 3, y);
+    }
+  }
+
+  // ---------- boot ----------
+  renderSound();
+  const firstOpen = LEVELS.findIndex(L => !saved.solved[L.id]);
+  loadLevel(firstOpen === -1 ? 0 : firstOpen);
+  resize();
+  requestAnimationFrame(frame);
+  // keyboard (for desktop testing): space = play, r = turn, f = flip, backspace = remove
+  window.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input')) return;
+    if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
+    else if (S.sel && e.key === 'r') $('#turnBtn').click();
+    else if (S.sel && e.key === 'f') $('#flipBtn').click();
+    else if (S.sel && (e.key === 'Backspace' || e.key === 'Delete')) $('#delBtn').click();
+  });
+  window.__gizmo = S;
+})();
+
+</script>
+
+</body></html>
