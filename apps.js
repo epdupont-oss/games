@@ -35,6 +35,12 @@ const APPS = [
     color: "#0000aa",
   },
   {
+    name: "Banana Duel Online",
+    link: "https://banana-duel.epdupont.workers.dev",
+    icon: "🦍",
+    color: "#00aaaa",
+  },
+  {
     name: "Sparkle Gobble",
     link: "apps/sparkle-gobble/index.html",
     icon: "🦄",
